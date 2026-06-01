@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cellfy — Central de POPs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#09090f;--surface:#111118;--surface2:#18181f;--surface3:#1f1f28;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#eeeef5;--text2:#8888a8;--text3:#44445a;
+  --cyan:#00d4f0;--purple:#7c3fff;--grad:linear-gradient(90deg,#00d4f0,#7c3fff);
+  --danger:#ff5c6a;--success:#00c48c;--warn:#f5a623;
+}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);}
+
+/* ── LAYOUT ── */
+.app{display:flex;height:100vh;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:240px;min-width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.sb-logo{padding:18px 16px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.sb-logo img{height:30px;width:auto;}
+.sb-logo-fallback{display:flex;align-items:center;gap:8px;}
+.sb-logo-icon{width:30px;height:30px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:14px;}
+.sb-logo-text{font-size:16px;font-weight:600;color:#fff;letter-spacing:-0.02em;}
+.sb-section-label{font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;padding:14px 16px 6px;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 16px;font-size:13px;color:var(--text2);cursor:pointer;border:none;background:none;width:100%;text-align:left;border-left:2px solid transparent;transition:all .15s;font-family:inherit;}
+.nav-item:hover{background:var(--surface2);color:var(--text);}
+.nav-item.active{background:var(--surface2);color:var(--cyan);border-left-color:var(--cyan);}
+.nav-item i{font-size:15px;}
+.sb-history{flex:1;overflow-y:auto;padding:8px;}
+.hist-card{padding:9px 10px;border-radius:8px;cursor:pointer;border:1px solid transparent;margin-bottom:4px;transition:all .15s;}
+.hist-card:hover{border-color:var(--border2);background:var(--surface2);}
+.hist-card-name{font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hist-card-meta{font-size:11px;color:var(--text3);margin-top:2px;}
+.hist-empty{font-size:12px;color:var(--text3);text-align:center;padding:28px 12px;line-height:1.6;}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{padding:14px 24px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.topbar-title{font-size:15px;font-weight:500;color:var(--text);}
+.topbar-sub{font-size:12px;color:var(--text3);margin-top:2px;}
+.tabs-bar{display:flex;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab-btn{padding:10px 16px;font-size:13px;cursor:pointer;color:var(--text2);border:none;background:none;border-bottom:2px solid transparent;transition:all .15s;font-family:inherit;display:flex;align-items:center;gap:6px;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--cyan);border-bottom-color:var(--cyan);}
+.tab-btn i{font-size:13px;}
+.scroll-area{flex:1;overflow-y:auto;padding:24px;}
+
+/* ── FORM ── */
+.form-section{margin-bottom:28px;}
+.form-section-header{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.form-section-icon{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,rgba(0,212,240,.15),rgba(124,63,255,.15));border:1px solid rgba(0,212,240,.2);display:flex;align-items:center;justify-content:center;}
+.form-section-icon i{font-size:14px;color:var(--cyan);}
+.form-section-title{font-size:13px;font-weight:500;color:var(--text);}
+.form-section-num{font-size:11px;color:var(--text3);background:var(--surface3);padding:2px 7px;border-radius:20px;border:1px solid var(--border);}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.full{grid-column:1/-1;}
+.fg{display:flex;flex-direction:column;gap:5px;}
+label{font-size:12px;color:var(--text2);}
+label .req{color:var(--cyan);}
+input,select,textarea{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:8px 10px;outline:none;transition:border-color .15s;width:100%;}
+input:focus,select:focus,textarea:focus{border-color:var(--cyan);}
+input::placeholder,textarea::placeholder{color:var(--text3);}
+select option{background:#18181f;}
+textarea{resize:vertical;min-height:72px;}
+
+/* checkboxes */
+.check-group{display:flex;flex-wrap:wrap;gap:8px;}
+.check-item{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--text2);}
+.check-item input[type=checkbox]{width:15px;height:15px;accent-color:var(--cyan);cursor:pointer;}
+.check-item input[type=checkbox]:checked+span{color:var(--cyan);}
+
+/* tag input */
+.tag-box{display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);min-height:38px;cursor:text;}
+.tag-box:focus-within{border-color:var(--cyan);}
+.tag-box input{border:none;background:none;outline:none;font-size:13px;font-family:inherit;color:var(--text);flex:1;min-width:80px;padding:2px 0;}
+.tag{background:rgba(0,212,240,.1);color:var(--cyan);font-size:11px;padding:3px 9px;border-radius:20px;display:flex;align-items:center;gap:5px;border:1px solid rgba(0,212,240,.2);}
+.tag button{background:none;border:none;cursor:pointer;color:var(--cyan);font-size:12px;line-height:1;padding:0;}
+
+/* step list */
+.step-list{display:flex;flex-direction:column;gap:8px;}
+.step-row{display:flex;align-items:center;gap:8px;}
+.step-bullet{width:22px;height:22px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0;}
+.step-row input{flex:1;}
+.step-del{background:none;border:1px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;color:var(--text3);font-size:13px;transition:all .15s;flex-shrink:0;}
+.step-del:hover{border-color:var(--danger);color:var(--danger);}
+.add-row{background:none;border:1px dashed var(--border2);border-radius:8px;padding:8px;width:100%;font-size:12px;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:4px;font-family:inherit;transition:all .15s;}
+.add-row:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,240,.04);}
+
+/* history table in step pane */
+.hist-table{width:100%;border-collapse:collapse;font-size:12px;}
+.hist-table th{text-align:left;padding:7px 10px;font-size:11px;font-weight:500;color:var(--text3);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.06em;}
+.hist-table td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;}
+.hist-table tbody tr:last-child td{border-bottom:none;}
+.hist-row-add{display:flex;gap:8px;margin-top:8px;}
+.hist-row-add input{flex:1;}
+
+/* info box */
+.info-box{background:rgba(0,212,240,.06);border:1px solid rgba(0,212,240,.18);border-radius:8px;padding:10px 14px;display:flex;gap:9px;margin-bottom:16px;}
+.info-box i{color:var(--cyan);font-size:15px;flex-shrink:0;margin-top:1px;}
+.info-box p{font-size:12px;color:var(--text2);line-height:1.6;}
+
+/* ── ACTION BAR ── */
+.action-bar{padding:13px 24px;border-top:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.btn-grad{background:var(--grad);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:7px;font-family:inherit;transition:opacity .15s;}
+.btn-grad:hover{opacity:.85;}
+.btn-grad:disabled{opacity:.35;cursor:not-allowed;}
+.btn-ghost{background:none;border:1px solid var(--border2);border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;color:var(--text2);font-family:inherit;display:flex;align-items:center;gap:6px;transition:all .15s;}
+.btn-ghost:hover{border-color:var(--cyan);color:var(--cyan);}
+.form-err{font-size:12px;color:var(--danger);}
+
+/* ── RESULT VIEW ── */
+.result-header{padding:14px 24px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.result-meta-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:5px;}
+.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:500;}
+.badge-new{background:rgba(0,196,140,.12);color:var(--success);border:1px solid rgba(0,196,140,.25);}
+.badge-update{background:rgba(124,63,255,.12);color:#b09cff;border:1px solid rgba(124,63,255,.25);}
+.badge-sector{background:var(--surface3);color:var(--text2);border:1px solid var(--border);}
+.badge-status-ativo{background:rgba(0,196,140,.1);color:var(--success);}
+.badge-status-rascunho{background:rgba(245,166,35,.1);color:var(--warn);}
+.pop-doc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:24px;font-family:'DM Mono',monospace;font-size:12.5px;line-height:1.8;color:var(--text);white-space:pre-wrap;word-break:break-word;}
+.flowchart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:24px;overflow-x:auto;}
+.flow-col{display:flex;flex-direction:column;align-items:center;gap:0;}
+.flow-node-box{padding:9px 20px;border-radius:8px;font-size:12px;font-weight:500;text-align:center;min-width:200px;max-width:260px;border:1px solid var(--border2);color:var(--text);}
+.flow-node-box.start,.flow-node-box.end{border-radius:24px;background:linear-gradient(90deg,rgba(0,212,240,.12),rgba(124,63,255,.12));border-color:rgba(0,212,240,.3);color:var(--cyan);}
+.flow-node-box.action{background:var(--surface2);}
+.flow-node-box.decision{background:rgba(124,63,255,.1);color:#b09cff;border-color:rgba(124,63,255,.3);}
+.flow-node-box.decision::before{content:'◆  ';}
+.flow-node-box.exception{background:rgba(255,92,106,.08);color:#ff8a94;border-color:rgba(255,92,106,.25);}
+.flow-arrow{font-size:14px;color:var(--text3);margin:4px 0;line-height:1;}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* spinner */
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* notion config panel */
+.notion-panel{background:rgba(0,212,240,.05);border:1px solid rgba(0,212,240,.2);border-radius:10px;padding:16px;margin-bottom:16px;}
+.notion-panel label{font-size:12px;color:var(--cyan);font-weight:500;}
+.notion-status{font-size:11px;margin-top:6px;}
+.notion-status.ok{color:var(--success);}
+.notion-status.err{color:var(--danger);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-fallback">
+        <div class="sb-logo-icon">C</div>
+        <span class="sb-logo-text">cellfy</span>
+      </div>
+    </div>
+    <div class="sb-section-label">Menu</div>
+    <button class="nav-item active" id="nav-novo" onclick="showView('form')">
+      <i class="ti ti-plus"></i> Novo POP
+    </button>
+    <button class="nav-item" id="nav-hist" onclick="showView('history')">
+      <i class="ti ti-clock"></i> Histórico
+    </button>
+    <button class="nav-item" id="nav-cfg" onclick="showView('config')">
+      <i class="ti ti-settings"></i> Configurações
+    </button>
+    <div class="sb-section-label">Recentes</div>
+    <div class="sb-history" id="sb-history-list"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="main-area">
+
+    <!-- VIEW: FORM -->
+    <div id="view-form" style="display:flex;flex-direction:column;height:100%;">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title">Novo Procedimento Operacional Padrão</div>
+          <div class="topbar-sub">Preencha todas as seções — o documento será gerado automaticamente</div>
+        </div>
+      </div>
+      <div class="tabs-bar">
+        <button class="tab-btn active" id="tab-id" onclick="goTab('id')"><i class="ti ti-id-badge"></i>Identificação</button>
+        <button class="tab-btn" id="tab-entrada" onclick="goTab('entrada')"><i class="ti ti-bell"></i>Entrada</button>
+        <button class="tab-btn" id="tab-diag" onclick="goTab('diag')"><i class="ti ti-zoom-check"></i>Diagnóstico</button>
+        <button class="tab-btn" id="tab-exec" onclick="goTab('exec')"><i class="ti ti-player-play"></i>Execução</button>
+        <button class="tab-btn" id="tab-risco" onclick="goTab('risco')"><i class="ti ti-alert-triangle"></i>Controle de risco</button>
+        <button class="tab-btn" id="tab-saida" onclick="goTab('saida')"><i class="ti ti-check"></i>Saída</button>
+        <button class="tab-btn" id="tab-versao" onclick="goTab('versao')"><i class="ti ti-history"></i>Versões</button>
+      </div>
+
+      <div class="scroll-area" id="form-scroll">
+
+        <!-- 1. IDENTIFICAÇÃO -->
+        <div id="pane-id">
+          <div class="form-section">
+            <div class="form-section-header">
+              <div class="form-section-icon"><i class="ti ti-file-description"></i></div>
+              <span class="form-section-title">1. Identificação do processo</span>
+              <span class="form-section-num">Seção 1</span>
+            </div>
+            <div class="grid2">
+              <div class="fg full">
+                <label>Nome do processo <span class="req">*</span></label>
+                <input id="f_nome" type="text" placeholder="Ex: Atendimento de produto com defeito — Shopee" />
+              </div>
+              <div class="fg">
+                <label>Tipo de registro <span class="req">*</span></label>
+                <select id="f_tipo">
+                  <option value="">Selecione...</option>
+                  <option value="novo">Novo POP</option>
+                  <option value="atualizacao">Atualização de POP existente</option>
+                </select>
+              </div>
+              <div class="fg" id="ref-group" style="display:none">
+                <label>POP de referência</label>
+                <input id="f_ref" type="text" placeholder="Ex: POP-CS-001" />
+              </div>
+              <div class="fg">
+                <label>Versão</label>
+                <input id="f_versao" type="text" value="1.0" />
+              </div>
+              <div class="fg">
+                <label>Área responsável <span class="req">*</span></label>
+                <select id="f_area">
+                  <option value="">Selecione...</option>
+                  <option>CS / Customer Ops</option>
+                  <option>Logística</option>
+                  <option>Comercial / Vendas</option>
+                  <option>Tech / Infra</option>
+                  <option>Marketing</option>
+                  <option>Financeiro</option>
+                  <option>RH</option>
+                  <option>Operações</option>
+                </select>
+              </div>
+              <div class="fg">
+                <label>Responsável primário (cargo) <span class="req">*</span></label>
+                <input id="f_cargo" type="text" placeholder="Ex: Analista de CS" />
+              </div>
+              <div class="fg full">
+                <label>Objetivo do processo <span class="req">*</span></label>
+                <textarea id="f_objetivo" placeholder="Descreva o que este processo deve garantir ou resolver..."></textarea>
+              </div>
+              <div class="fg">
+                <label>Canal de aplicação</label>
+                <div class="check-group" style="margin-top:4px;">
+                  <label class="check-item"><input type="checkbox" id="ch_site" /><span>Site próprio</span></label>
+                  <label class="check-item"><input type="checkbox" id="ch_mkt" /><span>Marketplace</span></label>
+                  <label class="check-item"><input type="checkbox" id="ch_int" /><span>Interno</span></label>
+                  <label class="check-item"><input type="checkbox" id="ch_todos" /><span>Todos</span></label>
+                </div>
+              </div>
+              <div class="fg">
+                <label>SLA esperado</label>
+                <input id="f_sla" type="text" placeholder="Ex: Até 2 horas após o contato" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. ENTRADA -->
+        <div id="pane-entrada" style="display:none">
+          <div class="form-section">
+            <div class="form-section-header">
+              <div class="form-section-icon"><i class="ti ti-bell"></i></div>
+              <span class="form-section-title">2. Entrada do processo</span>
+              <span class="form-section-num">Seção 2</span>
+            </div>
+            <div class="grid2">
+              <div class="fg full">
+                <label>Gatilho — o processo inicia quando <span class="req">*</span></label>
+                <textarea id="f_gatilho" placeholder="Descreva o evento que aciona este processo..."></textarea>
+              </div>
+              <div class="fg full">
+                <label>Evidências solicitadas ao cliente</label>
+                <div class="tag-box" id="ev-box" onclick="document.getElementById('ev-inp').focus()">
+                  <input type="text" id="ev-inp" placeholder="Ex: Foto, vídeo — pressione Enter para adicionar..." onkeydown="addTag(event,'ev')" />
+                </div>
+              </div>
+              <div class="fg">
+                <label>Tipo</label>
+                <input id="f_tipo_proc" type="text" placeholder="Ex: Produto chegou com defeito" />
+              </div>
+              <div class="fg">
+                <label>Natureza</label>
+                <input id="f_natureza" type="text" placeholder="Ex: Reativo e corretivo" />
+              </div>
+              <div class="fg">
+                <label>Prioridade padrão</label>
+                <select id="f_prioridade">
+                  <option value="">Selecione...</option>
+                  <option>Alta prioridade</option>
+                  <option>Média prioridade</option>
+                  <option>Baixa prioridade</option>
+                </select>
+              </div>
+              <div class="fg">
+                <label>Impacto</label>
+                <div class="check-group" style="margin-top:4px;">
+                  <label class="check-item"><input type="checkbox" id="imp_fin" /><span>Financeiro</span></label>
+                  <label class="check-item"><input type="checkbox" id="imp_rep" /><span>Reputacional</span></label>
+                  <label class="check-item"><input type="checkbox" id="imp_op" /><span>Operacional</span></label>
+                  <label class="check-item"><input type="checkbox" id="imp_cli" /><span>Cliente</span></label>
+                  <label class="check-item"><input type="checkbox" id="imp_jur" /><span>Jurídico</span></label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. DIAGNÓSTICO -->
+        <div id="pane-diag" style="display:none">
+          <div class="form-section">
+            <div class="form-section-header">
+              <div class="form-section-icon"><i class="ti ti-zoom-check"></i></div>
+              <span class="form-section-title">3. Diagnóstico</span>
+              <span class="form-section-num">Seção 3</span>
+            </div>
+            <div class="grid2">
+              <div class="fg full">
+                <label>Objetivo do diagnóstico — o que precisa ser validado antes de executar a ação</label>
+                <textarea id="f_diag_obj" placeholder="Ex: Confirmar se a troca é viável, se o cliente violou o produto..."></textarea>
+              </div>
+              <div class="fg full">
+                <label>Checklist de verificação</label>
+                <div class="info-box"><i class="ti ti-info-circle"></i><p>Adicione cada item do checklist. Eles aparecerão no documento final como lista de verificação.</p></div>
+                <div class="step-list" id="checklist-list"></div>
+                <button class="add-row" onclick="addChecklist()"><i class="ti ti-plus"></i> Adicionar item</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. EXECUÇÃO -->
+        <div id="pane-exec" style="display:none">
+          <div class="form-section">
+            <div class="form-section-header">
+              <div class="form-section-icon"><i class="ti ti-player-play"></i></div>
+              <span class="form-section-title">4. Execução — passo a passo</span>
+              <span class="form-section-num">Seção 4</span>
+            </div>
+            <div class="grid2">
+              <div class="fg full">
+                <label>Etapas do processo (em ordem cronológica) <span class="req">*</span></label>
+                <div class="info-box"><i class="ti ti-info-circle"></i><p>Estas etapas geram o fluxograma automaticamente. Etapas com "se", "verificar", "confirmar" são marcadas como decisão.</p></div>
+                <div class="step-list" id="steps-list"></div>
+                <button class="add-row" onclick="addStep()"><i class="ti ti-plus"></i> Adicionar etapa</button>
+              </div>
+              <div class="fg">
+                <label>Primeira ação / tempo de resposta</label>
+                <input id="f_primeira_acao" type="text" placeholder="Ex: Assim que o cliente enviar a evidência" />
+              </div>
+              <div class="fg">
+                <label>Prazo máximo de resolução</label>
+                <input id="f_prazo" type="text" placeholder="Ex: 24/48h na plataforma" />
+              </div>
+              <div class="fg full">
+                <label>Ferramentas utilizadas</label>
+                <div class="grid3" style="margin-top:4px;">
+                  <div class="fg">
+                    <label>Sistema / ERP</label>
+                    <input id="f_erp" type="text" placeholder="Ex: Shopee, Predize" />
+                  </div>
+                  <div class="fg">
+                    <label>CRM / Controle interno</label>
+                    <input id="f_crm" type="text" placeholder="Ex: Planilha controle de trocas" />
+                  </div>
+                  <div class="fg">
+                    <label>Outros</label>
+                    <input id="f_outros_tools" type="text" placeholder="Ex: Chatvolt, Google Sheets" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. CONTROLE DE RISCO -->
+        <div id="pane-risco" style="display:none">
+          <div class="form-section">
+            <div class="form-section-header">
+              <div class="form-section-icon"><i class="ti ti-alert-triangle"></i></div>
+              <span class="form-section-title">5. Controle de risco</span>
+              <span class="form-section-num">Seção 5</span>
+            </div>
+            <div class="grid2">
+              <div class="fg full">
+                <label>O que jamais fazer neste processo</label>
+                <textarea id="f_nao_fazer" placeholder="Ex: Nunca prometer reembolso sem validar com o time financeiro..."></textarea>
+              </div>
+              <div class="fg full">
+                <label>Exceções — quando este processo pode ser ajustado</label>
+                <textarea id="f_excecoes" placeholder="Ex: Em casos de reclamação pública no Reclame Aqui, escalar imediatamente..."></textarea>
+              </div>
+              <div class="fg full">
+                <label>Erros que já aprendemos (exemplos reais)</label>
+                <textarea id="f_erros" placeholder="Ex: Já enviamos etiqueta sem confirmar endereço e o produto foi extraviado..."></textarea>
+              </div>
+              <div class="fg">
+                <label>Quando escalar</label>
+                <textarea id="f_escalar_quando" style="min-height:56px" placeholder="Ex: Quando o cliente ameaçar Reclame Aqui ou Procon..."></textarea>
+              </div>
+              <div class="fg">
+                <label>Escalar para (cargo / área)</label>
+                <input id="f_escalar_para" type="text" placeholder="Ex: Coordenadora de CS, time Jurídico" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. SAÍDA -->
+        <div id="pane-saida" style="display:none">
+          <div class="form-section">
+            <div class="form-section-header">
+              <div class="form-section-icon"><i class="ti ti-check"></i></div>
+              <span class="form-section-title">6. Saída do processo</span>
+              <span class="form-section-num">Seção 6</span>
+            </div>
+            <div class="grid2">
+              <div class="fg full">
+                <label>Critério de conclusão — o processo é finalizado quando</label>
+                <textarea id="f_conclusao" placeholder="Ex: Produto recebido pelo cliente, satisfação confirmada, ticket encerrado..."></textarea>
+              </div>
+              <div class="fg full">
+                <label>Registro obrigatório após finalizar</label>
+                <div class="check-group" style="margin-top:6px;flex-direction:column;gap:6px;">
+                  <label class="check-item"><input type="checkbox" id="reg_sistema" checked /><span>Atualizar sistema / plataforma</span></label>
+                  <label class="check-item"><input type="checkbox" id="reg_obs" checked /><span>Registrar observação no histórico</span></label>
+                  <label class="check-item"><input type="checkbox" id="reg_area" /><span>Informar área envolvida</span></label>
+                  <label class="check-item"><input type="checkbox" id="reg_ev" checked /><span>Arquivar evidências</span></label>
+                </div>
+              </div>
+              <div class="fg full" style="margin-top:8px;">
+                <label>Indicadores impactados (se aplicável)</label>
+                <div class="grid3" style="margin-top:4px;">
+                  <div class="fg">
+                    <label>Indicador</label>
+                    <input id="f_indicador" type="text" placeholder="Ex: CSAT, NPS, taxa de troca" />
+                  </div>
+                  <div class="fg">
+                    <label>Meta relacionada</label>
+                    <input id="f_meta" type="text" placeholder="Ex: ≥ 80% satisfação" />
+                  </div>
+                  <div class="fg">
+                    <label>Frequência de acompanhamento</label>
+                    <select id="f_freq">
+                      <option value="">A definir</option>
+                      <option>Diário</option>
+                      <option>Semanal</option>
+                      <option>Mensal</option>
+                      <option>Trimestral</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. VERSÕES -->
+        <div id="pane-versao" style="display:none">
+          <div class="form-section">
+            <div class="form-section-header">
+              <div class="form-section-icon"><i class="ti ti-history"></i></div>
+              <span class="form-section-title">7. Histórico de atualizações</span>
+              <span class="form-section-num">Seção 7</span>
+            </div>
+            <div class="grid2">
+              <div class="fg">
+                <label>Elaborado por</label>
+                <input id="f_autor" type="text" placeholder="Nome do responsável" />
+              </div>
+              <div class="fg">
+                <label>Aprovado por</label>
+                <input id="f_aprovador" type="text" placeholder="Liderança / gestor" />
+              </div>
+              <div class="fg">
+                <label>Data de vigência</label>
+                <input id="f_vigencia" type="date" />
+              </div>
+              <div class="fg">
+                <label>Frequência de revisão</label>
+                <select id="f_revisao">
+                  <option value="">A definir</option>
+                  <option>Mensal</option>
+                  <option>Trimestral</option>
+                  <option>Semestral</option>
+                  <option>Anual</option>
+                  <option>Sob demanda</option>
+                </select>
+              </div>
+              <div class="fg">
+                <label>Status</label>
+                <select id="f_status">
+                  <option value="ativo">Ativo</option>
+                  <option value="rascunho">Rascunho</option>
+                  <option value="em_revisao">Em revisão</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:20px;">
+              <label style="display:block;margin-bottom:10px;">Histórico de versões</label>
+              <table class="hist-table">
+                <thead><tr><th>Versão</th><th>Data</th><th>Alteração</th><th>Responsável</th><th style="width:36px;"></th></tr></thead>
+                <tbody id="versoes-tbody"></tbody>
+              </table>
+              <div class="hist-row-add" style="margin-top:10px;">
+                <input type="text" id="v_ver" placeholder="Versão" style="max-width:80px;" />
+                <input type="date" id="v_data" />
+                <input type="text" id="v_alt" placeholder="Descrição da alteração" style="flex:2;" />
+                <input type="text" id="v_resp" placeholder="Responsável" />
+                <button class="btn-ghost" onclick="addVersao()"><i class="ti ti-plus"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /scroll-area -->
+
+      <div class="action-bar">
+        <button class="btn-grad" id="gerar-btn" onclick="gerarPOP()">
+          <i class="ti ti-sparkles"></i> Gerar POP e fluxograma
+        </button>
+        <button class="btn-ghost" onclick="limparForm()">
+          <i class="ti ti-refresh"></i> Limpar
+        </button>
+        <span id="form-err" class="form-err"></span>
+      </div>
+    </div>
+
+    <!-- VIEW: HISTORY -->
+    <div id="view-history" style="display:none;flex-direction:column;height:100%;">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title">Histórico de POPs</div>
+          <div class="topbar-sub">Todos os procedimentos salvos — clique para visualizar</div>
+        </div>
+        <button class="btn-ghost" onclick="showView('form')"><i class="ti ti-plus"></i> Novo POP</button>
+      </div>
+      <div class="scroll-area" id="history-scroll"></div>
+    </div>
+
+    <!-- VIEW: RESULT -->
+    <div id="view-result" style="display:none;flex-direction:column;height:100%;">
+      <div class="result-header">
+        <div>
+          <div class="topbar-title" id="r-title">POP gerado</div>
+          <div class="result-meta-row" id="r-meta"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-ghost" onclick="copyResult()"><i class="ti ti-copy"></i> Copiar</button>
+          <button class="btn-ghost" id="notion-save-btn" onclick="salvarNotion()" style="display:none;"><i class="ti ti-brand-notion"></i> Salvar no Notion</button>
+          <button class="btn-ghost" onclick="showView('form')"><i class="ti ti-plus"></i> Novo</button>
+        </div>
+      </div>
+      <div class="tabs-bar">
+        <button class="tab-btn active" id="rtab-doc" onclick="switchResult('doc')"><i class="ti ti-file-text"></i> Documento</button>
+        <button class="tab-btn" id="rtab-flow" onclick="switchResult('flow')"><i class="ti ti-sitemap"></i> Fluxograma</button>
+      </div>
+      <div class="scroll-area">
+        <div id="rpane-doc"><pre class="pop-doc" id="pop-output"></pre></div>
+        <div id="rpane-flow" style="display:none;"><div class="flowchart-wrap"><div class="flow-col" id="flow-nodes"></div></div></div>
+      </div>
+    </div>
+
+    <!-- VIEW: CONFIG -->
+    <div id="view-config" style="display:none;flex-direction:column;height:100%;">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title">Configurações</div>
+          <div class="topbar-sub">Integração com Notion para salvar POPs na nuvem</div>
+        </div>
+      </div>
+      <div class="scroll-area" style="max-width:560px;">
+        <div class="notion-panel">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <i class="ti ti-brand-notion" style="font-size:20px;color:var(--cyan);"></i>
+            <span style="font-size:14px;font-weight:500;color:var(--text);">Integração Notion</span>
+          </div>
+          <div class="info-box">
+            <i class="ti ti-info-circle"></i>
+            <p>Para salvar POPs no Notion: acesse <strong>notion.so/my-integrations</strong>, crie uma integração, copie o token e cole abaixo. Depois crie um banco de dados no Notion e cole o ID da página (últimos 32 caracteres da URL).</p>
+          </div>
+          <div class="fg" style="margin-bottom:12px;">
+            <label>Token da integração Notion</label>
+            <input type="password" id="cfg-notion-token" placeholder="secret_..." oninput="salvarConfig()" />
+          </div>
+          <div class="fg" style="margin-bottom:12px;">
+            <label>ID do banco de dados Notion</label>
+            <input type="text" id="cfg-notion-db" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" oninput="salvarConfig()" />
+          </div>
+          <div id="notion-cfg-status" class="notion-status"></div>
+        </div>
+        <div class="form-section" style="margin-top:24px;">
+          <div class="form-section-header">
+            <div class="form-section-icon"><i class="ti ti-trash"></i></div>
+            <span class="form-section-title">Dados locais</span>
+          </div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.6;">O histórico local fica salvo neste navegador como backup. Limpe apenas se necessário.</p>
+          <button class="btn-ghost" onclick="limparHistorico()" style="border-color:rgba(255,92,106,.3);color:var(--danger);"><i class="ti ti-trash"></i> Limpar histórico local</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ── STATE ──
+const tags = { ev: [] };
+let steps = [];
+let checklist = [];
+let versoes = [];
+let history = [];
+let currentRecord = null;
+
+try { history = JSON.parse(localStorage.getItem('cellfy_pops_v3') || '[]'); } catch(e) {}
+
+// ── INIT ──
+function init() {
+  initSteps();
+  initChecklist();
+  document.getElementById('f_tipo').addEventListener('change', function() {
+    document.getElementById('ref-group').style.display = this.value === 'atualizacao' ? 'flex' : 'none';
+  });
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('f_vigencia').value = today;
+  document.getElementById('v_data').value = today;
+  loadConfig();
+  renderSidebar();
+}
+
+function initSteps() { steps = ['', '', '']; renderSteps(); }
+function initChecklist() { checklist = ['', '']; renderChecklist(); }
+
+// ── TABS ──
+const TABS = ['id','entrada','diag','exec','risco','saida','versao'];
+function goTab(t) {
+  TABS.forEach(tab => {
+    document.getElementById('pane-' + tab).style.display = tab === t ? 'block' : 'none';
+    document.getElementById('tab-' + tab).classList.toggle('active', tab === t);
+  });
+  document.getElementById('form-scroll').scrollTop = 0;
+}
+
+// ── TAGS ──
+function addTag(e, type) {
+  if (e.key !== 'Enter') return; e.preventDefault();
+  const inp = document.getElementById(type + '-inp');
+  const val = inp.value.trim(); if (!val) return;
+  tags[type].push(val); inp.value = ''; renderTags(type);
+}
+function removeTag(type, i) { tags[type].splice(i, 1); renderTags(type); }
+function renderTags(type) {
+  const box = document.getElementById(type + '-box');
+  const inp = box.querySelector('input');
+  box.querySelectorAll('.tag').forEach(t => t.remove());
+  tags[type].forEach((t, i) => {
+    const el = document.createElement('div'); el.className = 'tag';
+    el.innerHTML = `${t}<button onclick="removeTag('${type}',${i})">&times;</button>`;
+    box.insertBefore(el, inp);
+  });
+}
+
+// ── STEPS ──
+function renderSteps() {
+  document.getElementById('steps-list').innerHTML = steps.map((s, i) => `
+    <div class="step-row">
+      <div class="step-bullet">${i+1}</div>
+      <input type="text" value="${esc(s)}" placeholder="Descreva a etapa ${i+1}..." oninput="steps[${i}]=this.value" />
+      <button class="step-del" onclick="removeStep(${i})"><i class="ti ti-x"></i></button>
+    </div>`).join('');
+}
+function addStep() { steps.push(''); renderSteps(); }
+function removeStep(i) { if(steps.length>1){steps.splice(i,1);renderSteps();} }
+
+// ── CHECKLIST ──
+function renderChecklist() {
+  document.getElementById('checklist-list').innerHTML = checklist.map((c, i) => `
+    <div class="step-row">
+      <div class="step-bullet" style="background:rgba(0,212,240,.2);color:var(--cyan);font-size:13px;">✓</div>
+      <input type="text" value="${esc(c)}" placeholder="Item do checklist ${i+1}..." oninput="checklist[${i}]=this.value" />
+      <button class="step-del" onclick="removeCheck(${i})"><i class="ti ti-x"></i></button>
+    </div>`).join('');
+}
+function addChecklist() { checklist.push(''); renderChecklist(); }
+function removeCheck(i) { if(checklist.length>1){checklist.splice(i,1);renderChecklist();} }
+
+// ── VERSÕES ──
+function addVersao() {
+  const v = { ver: v('v_ver'), data: v('v_data'), alt: v('v_alt'), resp: v('v_resp') };
+  if (!v.ver && !v.alt) return;
+  versoes.push(v);
+  document.getElementById('v_ver').value='';
+  document.getElementById('v_alt').value='';
+  document.getElementById('v_resp').value='';
+  renderVersoes();
+}
+function removeVersao(i) { versoes.splice(i,1); renderVersoes(); }
+function renderVersoes() {
+  document.getElementById('versoes-tbody').innerHTML = versoes.map((r,i) => `
+    <tr>
+      <td>${r.ver}</td><td>${r.data}</td><td>${r.alt}</td><td>${r.resp}</td>
+      <td><button class="step-del" onclick="removeVersao(${i})"><i class="ti ti-x"></i></button></td>
+    </tr>`).join('') || `<tr><td colspan="5" style="color:var(--text3);font-style:italic;">Nenhuma versão registrada ainda</td></tr>`;
+}
+
+// ── HELPERS ──
+function v(id){ return document.getElementById(id)?.value?.trim()||''; }
+function checked(id){ return document.getElementById(id)?.checked; }
+function esc(s){ return (s||'').replace(/"/g,'&quot;'); }
+
+function getCanais() {
+  const c = [];
+  if(checked('ch_site')) c.push('Site próprio');
+  if(checked('ch_mkt')) c.push('Marketplace');
+  if(checked('ch_int')) c.push('Interno');
+  if(checked('ch_todos')) c.push('Todos');
+  return c;
+}
+function getImpacto() {
+  const c = [];
+  if(checked('imp_fin')) c.push('Financeiro');
+  if(checked('imp_rep')) c.push('Reputacional');
+  if(checked('imp_op')) c.push('Operacional');
+  if(checked('imp_cli')) c.push('Cliente');
+  if(checked('imp_jur')) c.push('Jurídico');
+  return c;
+}
+function getRegistros() {
+  const c = [];
+  if(checked('reg_sistema')) c.push('Atualizar sistema');
+  if(checked('reg_obs')) c.push('Registrar observação');
+  if(checked('reg_area')) c.push('Informar área envolvida');
+  if(checked('reg_ev')) c.push('Arquivar evidências');
+  return c;
+}
+
+function getStepsClean() {
+  const inputs = document.querySelectorAll('#steps-list input');
+  return steps.map((s,i) => inputs[i]?.value || s).filter(s => s.trim());
+}
+function getChecklistClean() {
+  const inputs = document.querySelectorAll('#checklist-list input');
+  return checklist.map((c,i) => inputs[i]?.value || c).filter(c => c.trim());
+}
+
+function getFormData() {
+  return {
+    nome: v('f_nome'), tipo: v('f_tipo'), ref: v('f_ref'),
+    versao: v('f_versao'), area: v('f_area'), cargo: v('f_cargo'),
+    objetivo: v('f_objetivo'), canais: getCanais(), sla: v('f_sla'),
+    gatilho: v('f_gatilho'), evidencias: [...tags.ev],
+    tipo_proc: v('f_tipo_proc'), natureza: v('f_natureza'),
+    prioridade: v('f_prioridade'), impacto: getImpacto(),
+    diag_obj: v('f_diag_obj'), checklist_items: getChecklistClean(),
+    etapas: getStepsClean(),
+    primeira_acao: v('f_primeira_acao'), prazo: v('f_prazo'),
+    erp: v('f_erp'), crm: v('f_crm'), outros_tools: v('f_outros_tools'),
+    nao_fazer: v('f_nao_fazer'), excecoes: v('f_excecoes'), erros: v('f_erros'),
+    escalar_quando: v('f_escalar_quando'), escalar_para: v('f_escalar_para'),
+    conclusao: v('f_conclusao'), registros: getRegistros(),
+    indicador: v('f_indicador'), meta: v('f_meta'), freq: v('f_freq'),
+    autor: v('f_autor'), aprovador: v('f_aprovador'),
+    vigencia: v('f_vigencia'), revisao: v('f_revisao'), status: v('f_status'),
+    versoes: [...versoes]
+  };
+}
+
+function validate(d) {
+  if(!d.nome) return 'Informe o nome do processo (Seção 1).';
+  if(!d.tipo) return 'Selecione o tipo de registro (Seção 1).';
+  if(!d.area) return 'Selecione a área responsável (Seção 1).';
+  if(!d.cargo) return 'Informe o cargo responsável (Seção 1).';
+  if(!d.objetivo) return 'Descreva o objetivo (Seção 1).';
+  if(!d.gatilho) return 'Descreva o gatilho do processo (Seção 2).';
+  if(d.etapas.length === 0) return 'Adicione ao menos uma etapa na aba Execução.';
+  return null;
+}
+
+// ── GERAR POP ──
+async function gerarPOP() {
+  const d = getFormData();
+  const err = validate(d);
+  if (err) { document.getElementById('form-err').textContent = '⚠ ' + err; return; }
+  document.getElementById('form-err').textContent = '';
+
+  const btn = document.getElementById('gerar-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Gerando...';
+
+  const prompt = `Você é especialista em gestão de processos para e-commerce. Gere um POP (Procedimento Operacional Padrão) completo e profissional para a empresa Cellfy, seguindo EXATAMENTE a estrutura abaixo, usando os dados fornecidos. Use linguagem clara, direta e operacional. Formate com separadores visuais (===, ---). NÃO use markdown com # ou **.
+
+DADOS COLETADOS:
+--- IDENTIFICAÇÃO ---
+Nome: ${d.nome}
+Tipo: ${d.tipo === 'novo' ? 'Novo POP' : 'Atualização de: ' + d.ref}
+Versão: ${d.versao}
+Área: ${d.area}
+Cargo responsável: ${d.cargo}
+Objetivo: ${d.objetivo}
+Canais: ${d.canais.join(', ') || 'Não especificado'}
+SLA: ${d.sla || 'Não especificado'}
+
+--- ENTRADA ---
+Gatilho: ${d.gatilho}
+Evidências solicitadas: ${d.evidencias.join(', ') || 'Não especificado'}
+Tipo: ${d.tipo_proc}
+Natureza: ${d.natureza}
+Prioridade: ${d.prioridade}
+Impacto: ${d.impacto.join(', ') || 'Não especificado'}
+
+--- DIAGNÓSTICO ---
+Objetivo do diagnóstico: ${d.diag_obj}
+Checklist: ${d.checklist_items.map((c,i)=>`${i+1}. ${c}`).join(' | ')}
+
+--- EXECUÇÃO ---
+Etapas: ${d.etapas.map((e,i)=>`${i+1}. ${e}`).join('\n')}
+Primeira ação: ${d.primeira_acao}
+Prazo: ${d.prazo}
+Ferramentas: ERP: ${d.erp} | CRM: ${d.crm} | Outros: ${d.outros_tools}
+
+--- CONTROLE DE RISCO ---
+O que jamais fazer: ${d.nao_fazer}
+Exceções: ${d.excecoes}
+Erros aprendidos: ${d.erros}
+Quando escalar: ${d.escalar_quando}
+Escalar para: ${d.escalar_para}
+
+--- SAÍDA ---
+Critério de conclusão: ${d.conclusao}
+Registros obrigatórios: ${d.registros.join(', ')}
+Indicador: ${d.indicador} | Meta: ${d.meta} | Frequência: ${d.freq}
+
+--- CONTROLE DE VERSÃO ---
+Elaborado por: ${d.autor || 'A preencher'}
+Aprovado por: ${d.aprovador || 'A preencher'}
+Vigência: ${d.vigencia}
+Revisão: ${d.revisao}
+
+GERE O POP COMPLETO seguindo as seções: 1.Identificação / 2.Entrada do Processo / 3.Diagnóstico / 4.Execução Passo a Passo / 5.Controle de Risco / 6.Saída do Processo / 7.Indicadores / 8.Histórico de Atualizações. Seja específico, acionável e expanda cada seção com substeps e orientações práticas baseadas nos dados fornecidos.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await resp.json();
+    const popText = data.content?.map(b => b.text||'').join('') || 'Erro ao gerar.';
+
+    const record = {
+      id: Date.now(),
+      nome: d.nome, area: d.area, tipo: d.tipo,
+      versao: d.versao, status: d.status,
+      data: new Date().toLocaleDateString('pt-BR'),
+      pop: popText, etapas: d.etapas, formData: d
+    };
+    history.unshift(record);
+    saveHistory();
+    currentRecord = record;
+    showResult(record);
+  } catch(e) {
+    document.getElementById('form-err').textContent = 'Erro ao conectar. Verifique sua conexão e tente novamente.';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-sparkles"></i> Gerar POP e fluxograma';
+  }
+}
+
+// ── SHOW RESULT ──
+function showResult(rec) {
+  currentRecord = rec;
+  document.getElementById('r-title').textContent = rec.nome;
+  const notionCfg = loadConfig();
+  document.getElementById('notion-save-btn').style.display = notionCfg.token && notionCfg.db ? 'flex' : 'none';
+  document.getElementById('r-meta').innerHTML = `
+    <span class="badge ${rec.tipo==='novo'?'badge-new':'badge-update'}">${rec.tipo==='novo'?'Novo':'Atualização'}</span>
+    <span class="badge badge-sector">${rec.area}</span>
+    <span class="badge badge-sector">v${rec.versao}</span>
+    <span class="badge badge-sector">${rec.data}</span>
+    <span class="badge badge-status-${rec.status||'ativo'}">${rec.status||'ativo'}</span>`;
+  document.getElementById('pop-output').textContent = rec.pop;
+  renderFlowchart(rec.etapas || []);
+  switchResult('doc');
+  showView('result');
+}
+
+function switchResult(tab) {
+  document.getElementById('rpane-doc').style.display = tab==='doc'?'block':'none';
+  document.getElementById('rpane-flow').style.display = tab==='flow'?'block':'none';
+  document.getElementById('rtab-doc').classList.toggle('active', tab==='doc');
+  document.getElementById('rtab-flow').classList.toggle('active', tab==='flow');
+}
+
+// ── FLOWCHART ──
+function renderFlowchart(etapas) {
+  const el = document.getElementById('flow-nodes');
+  const isDecision = s => /\bse\b|\bquando\b|\bcaso\b|verificar|confirmar|checar/i.test(s);
+  const isException = s => /escalar|erro|falha|problema|urgente/i.test(s);
+  let html = `<div class="flow-node-box start"><i class="ti ti-player-play"></i> Início</div>`;
+  etapas.forEach(e => {
+    html += `<div class="flow-arrow">↓</div>`;
+    const cls = isException(e) ? 'exception' : isDecision(e) ? 'decision' : 'action';
+    html += `<div class="flow-node-box ${cls}" style="font-size:11px;">${e}</div>`;
+  });
+  html += `<div class="flow-arrow">↓</div><div class="flow-node-box end"><i class="ti ti-flag"></i> Fim</div>`;
+  el.innerHTML = html;
+}
+
+// ── COPY ──
+function copyResult() {
+  navigator.clipboard.writeText(document.getElementById('pop-output').textContent).then(() => {
+    const btn = event.target.closest('button');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="ti ti-check"></i> Copiado!';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  });
+}
+
+// ── NOTION SAVE ──
+async function salvarNotion() {
+  const cfg = loadConfig();
+  if (!cfg.token || !cfg.db || !currentRecord) return;
+  const btn = document.getElementById('notion-save-btn');
+  btn.innerHTML = '<div class="spinner"></div> Salvando...';
+  btn.disabled = true;
+  try {
+    const resp = await fetch(`https://api.notion.com/v1/pages`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${cfg.token}`, 'Content-Type': 'application/json', 'Notion-Version': '2022-06-28' },
+      body: JSON.stringify({
+        parent: { database_id: cfg.db },
+        properties: {
+          'Nome': { title: [{ text: { content: currentRecord.nome } }] },
+          'Área': { select: { name: currentRecord.area } },
+          'Versão': { rich_text: [{ text: { content: currentRecord.versao } }] },
+          'Status': { select: { name: currentRecord.status || 'ativo' } },
+          'Data': { date: { start: new Date().toISOString().split('T')[0] } },
+          'Tipo': { select: { name: currentRecord.tipo === 'novo' ? 'Novo' : 'Atualização' } }
+        },
+        children: [{
+          object: 'block', type: 'code',
+          code: { rich_text: [{ text: { content: currentRecord.pop.slice(0, 1990) } }], language: 'plain text' }
+        }]
+      })
+    });
+    if (resp.ok) {
+      btn.innerHTML = '<i class="ti ti-check"></i> Salvo no Notion!';
+      setTimeout(() => { btn.innerHTML = '<i class="ti ti-brand-notion"></i> Salvar no Notion'; btn.disabled = false; }, 3000);
+    } else {
+      btn.innerHTML = '<i class="ti ti-x"></i> Erro — verifique o token';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    btn.innerHTML = '<i class="ti ti-x"></i> Erro de conexão';
+    btn.disabled = false;
+  }
+}
+
+// ── VIEWS ──
+function showView(v) {
+  ['form','history','result','config'].forEach(id => {
+    const el = document.getElementById('view-' + id);
+    el.style.display = v===id ? 'flex' : 'none';
+    if(v===id && id!=='form' && id!=='result') el.style.flexDirection = 'column';
+  });
+  document.getElementById('nav-novo').classList.toggle('active', v==='form');
+  document.getElementById('nav-hist').classList.toggle('active', v==='history');
+  document.getElementById('nav-cfg').classList.toggle('active', v==='config');
+  if (v==='history') renderHistoryPage();
+}
+
+// ── HISTORY ──
+function saveHistory() {
+  try { localStorage.setItem('cellfy_pops_v3', JSON.stringify(history)); } catch(e) {}
+  renderSidebar();
+}
+
+function renderSidebar() {
+  const el = document.getElementById('sb-history-list');
+  if (!history.length) { el.innerHTML = '<p class="hist-empty">Nenhum POP gerado ainda</p>'; return; }
+  el.innerHTML = history.slice(0,10).map(r => `
+    <div class="hist-card" onclick='showResult(${JSON.stringify(r).replace(/'/g,"\\'")})'> 
+      <div class="hist-card-name">${r.nome}</div>
+      <div class="hist-card-meta">${r.area} · v${r.versao} · ${r.data}</div>
+    </div>`).join('');
+}
+
+function renderHistoryPage() {
+  const el = document.getElementById('history-scroll');
+  if (!history.length) { el.innerHTML = '<p style="font-size:13px;color:var(--text3);padding:48px 0;text-align:center;">Nenhum POP gerado ainda.</p>'; return; }
+  el.innerHTML = history.map(r => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:10px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='rgba(0,212,240,.3)'" onmouseout="this.style.borderColor='var(--border)'" onclick='showResult(${JSON.stringify(r).replace(/'/g,"\\'")})'>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">
+        <span style="font-size:14px;font-weight:500;color:var(--text);flex:1;">${r.nome}</span>
+        <span class="badge ${r.tipo==='novo'?'badge-new':'badge-update'}">${r.tipo==='novo'?'Novo':'Atualização'}</span>
+        <span style="font-size:11px;color:var(--text3);background:var(--surface3);padding:2px 8px;border-radius:20px;border:1px solid var(--border);">v${r.versao}</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="badge badge-sector">${r.area}</span>
+        <span style="font-size:11px;color:var(--text3);">${r.data}</span>
+        <span style="font-size:11px;color:var(--text3);">·</span>
+        <span style="font-size:11px;color:var(--text3);">${r.etapas?.length||0} etapas</span>
+      </div>
+    </div>`).join('');
+}
+
+function limparHistorico() {
+  if (!confirm('Limpar todo o histórico local?')) return;
+  history = []; saveHistory();
+  renderHistoryPage();
+}
+
+// ── CONFIG ──
+function loadConfig() {
+  try {
+    const cfg = JSON.parse(localStorage.getItem('cellfy_cfg') || '{}');
+    if (cfg.token) document.getElementById('cfg-notion-token').value = cfg.token;
+    if (cfg.db) document.getElementById('cfg-notion-db').value = cfg.db;
+    return cfg;
+  } catch(e) { return {}; }
+}
+function salvarConfig() {
+  const cfg = { token: document.getElementById('cfg-notion-token').value.trim(), db: document.getElementById('cfg-notion-db').value.trim() };
+  localStorage.setItem('cellfy_cfg', JSON.stringify(cfg));
+  const status = document.getElementById('notion-cfg-status');
+  if (cfg.token && cfg.db) { status.className = 'notion-status ok'; status.textContent = '✓ Configuração salva — Notion ativado'; }
+  else { status.className = 'notion-status'; status.textContent = 'Preencha os dois campos para ativar o Notion.'; }
+}
+
+// ── CLEAR FORM ──
+function limparForm() {
+  ['f_nome','f_ref','f_versao','f_cargo','f_objetivo','f_sla','f_gatilho','f_tipo_proc','f_natureza',
+   'f_diag_obj','f_primeira_acao','f_prazo','f_erp','f_crm','f_outros_tools','f_nao_fazer',
+   'f_excecoes','f_erros','f_escalar_quando','f_escalar_para','f_conclusao','f_indicador',
+   'f_meta','f_autor','f_aprovador','f_alteracao'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  document.getElementById('f_versao').value = '1.0';
+  document.getElementById('f_tipo').value = '';
+  document.getElementById('f_area').value = '';
+  document.getElementById('f_prioridade').value = '';
+  document.getElementById('f_status').value = 'ativo';
+  document.getElementById('ref-group').style.display = 'none';
+  ['ch_site','ch_mkt','ch_int','ch_todos','imp_fin','imp_rep','imp_op','imp_cli','imp_jur',
+   'reg_sistema','reg_obs','reg_area','reg_ev'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.checked = false;
+  });
+  document.getElementById('reg_sistema').checked = true;
+  document.getElementById('reg_obs').checked = true;
+  document.getElementById('reg_ev').checked = true;
+  tags.ev = []; renderTags('ev');
+  versoes = []; renderVersoes();
+  initSteps(); initChecklist();
+  document.getElementById('form-err').textContent = '';
+  goTab('id');
+}
+
+init();
+</script>
+</body>
+</html>
