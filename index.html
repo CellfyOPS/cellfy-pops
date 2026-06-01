@@ -142,8 +142,7 @@ textarea{resize:vertical;min-height:72px;}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
 
 /* spinner */
-.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
+
 
 /* notion config panel */
 .notion-panel{background:rgba(0,212,240,.05);border:1px solid rgba(0,212,240,.2);border-radius:10px;padding:16px;margin-bottom:16px;}
@@ -527,7 +526,7 @@ textarea{resize:vertical;min-height:72px;}
 
       <div class="action-bar">
         <button class="btn-grad" id="gerar-btn" onclick="gerarPOP()">
-          <i class="ti ti-sparkles"></i> Gerar POP e fluxograma
+          <i class="ti ti-file-check"></i> Gerar POP e fluxograma
         </button>
         <button class="btn-ghost" onclick="limparForm()">
           <i class="ti ti-refresh"></i> Limpar
@@ -786,94 +785,150 @@ function validate(d) {
   return null;
 }
 
-// ── GERAR POP ──
-async function gerarPOP() {
+// ── GERAR POP (LOCAL — SEM IA, SEM CUSTO) ──
+function gerarPOP() {
   const d = getFormData();
   const err = validate(d);
   if (err) { document.getElementById('form-err').textContent = '⚠ ' + err; return; }
   document.getElementById('form-err').textContent = '';
 
-  const btn = document.getElementById('gerar-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<div class="spinner"></div> Gerando...';
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const sep  = '='.repeat(60);
+  const sep2 = '─'.repeat(60);
 
-  const prompt = `Você é especialista em gestão de processos para e-commerce. Gere um POP (Procedimento Operacional Padrão) completo e profissional para a empresa Cellfy, seguindo EXATAMENTE a estrutura abaixo, usando os dados fornecidos. Use linguagem clara, direta e operacional. Formate com separadores visuais (===, ---). NÃO use markdown com # ou **.
+  const linha = (label, val) => val ? `${label.padEnd(18)}: ${val}` : '';
 
-DADOS COLETADOS:
---- IDENTIFICAÇÃO ---
-Nome: ${d.nome}
-Tipo: ${d.tipo === 'novo' ? 'Novo POP' : 'Atualização de: ' + d.ref}
-Versão: ${d.versao}
-Área: ${d.area}
-Cargo responsável: ${d.cargo}
-Objetivo: ${d.objetivo}
-Canais: ${d.canais.join(', ') || 'Não especificado'}
-SLA: ${d.sla || 'Não especificado'}
+  const canais      = d.canais.length      ? d.canais.join(' / ')      : 'Não especificado';
+  const impacto     = d.impacto.length     ? d.impacto.join(', ')      : 'Não especificado';
+  const evidencias  = d.evidencias.length  ? d.evidencias.join(', ')   : 'Não especificado';
+  const registros   = d.registros.length   ? d.registros.map((r,i) => `  ${i+1}. ${r}`).join('\n') : '  Não especificado';
+  const checklist   = d.checklist_items.length ? d.checklist_items.map(c => `  [ ] ${c}`).join('\n') : '  Não especificado';
+  const etapas      = d.etapas.map((e,i) => `  ${i+1}. ${e}`).join('\n');
+  const tools       = [d.erp && `Sistema/ERP: ${d.erp}`, d.crm && `CRM: ${d.crm}`, d.outros_tools && `Outros: ${d.outros_tools}`].filter(Boolean).map(t => `  - ${t}`).join('\n') || '  Não especificado';
+  const versao_hist = d.versoes.length ? d.versoes.map(v => `  ${v.ver} | ${v.data} | ${v.alt} | ${v.resp}`).join('\n') : '  Nenhuma versão anterior registrada';
+  const indicadores = d.indicador ? `  Indicador  : ${d.indicador}\n  Meta        : ${d.meta||'A definir'}\n  Frequência  : ${d.freq||'A definir'}` : '  Não aplicável';
+  const tipo_label  = d.tipo === 'novo' ? 'Novo POP' : 'Atualização' + (d.ref ? ` (ref: ${d.ref})` : '');
 
---- ENTRADA ---
-Gatilho: ${d.gatilho}
-Evidências solicitadas: ${d.evidencias.join(', ') || 'Não especificado'}
-Tipo: ${d.tipo_proc}
-Natureza: ${d.natureza}
-Prioridade: ${d.prioridade}
-Impacto: ${d.impacto.join(', ') || 'Não especificado'}
+  const pop =
+`CELLFY — PROCEDIMENTO OPERACIONAL PADRÃO
+${sep}
 
---- DIAGNÓSTICO ---
-Objetivo do diagnóstico: ${d.diag_obj}
-Checklist: ${d.checklist_items.map((c,i)=>`${i+1}. ${c}`).join(' | ')}
+📘 1. IDENTIFICAÇÃO DO PROCESSO
+${sep2}
+${linha('Nome do Processo', d.nome)}
+${linha('Tipo', tipo_label)}
+${linha('Versão', d.versao)}
+${linha('Data de Emissão', hoje)}
+${linha('Área Responsável', d.area)}
+${linha('Responsável', d.cargo)}
+${linha('Canal', canais)}
+${linha('SLA Esperado', d.sla || 'Não especificado')}
 
---- EXECUÇÃO ---
-Etapas: ${d.etapas.map((e,i)=>`${i+1}. ${e}`).join('\n')}
-Primeira ação: ${d.primeira_acao}
-Prazo: ${d.prazo}
-Ferramentas: ERP: ${d.erp} | CRM: ${d.crm} | Outros: ${d.outros_tools}
+Objetivo:
+  ${d.objetivo}
 
---- CONTROLE DE RISCO ---
-O que jamais fazer: ${d.nao_fazer}
-Exceções: ${d.excecoes}
-Erros aprendidos: ${d.erros}
-Quando escalar: ${d.escalar_quando}
-Escalar para: ${d.escalar_para}
+${sep}
 
---- SAÍDA ---
-Critério de conclusão: ${d.conclusao}
-Registros obrigatórios: ${d.registros.join(', ')}
-Indicador: ${d.indicador} | Meta: ${d.meta} | Frequência: ${d.freq}
+🚨 2. ENTRADA DO PROCESSO
+${sep2}
+Gatilho:
+  ${d.gatilho}
 
---- CONTROLE DE VERSÃO ---
-Elaborado por: ${d.autor || 'A preencher'}
-Aprovado por: ${d.aprovador || 'A preencher'}
-Vigência: ${d.vigencia}
-Revisão: ${d.revisao}
+Evidências solicitadas ao cliente:
+  ${evidencias}
 
-GERE O POP COMPLETO seguindo as seções: 1.Identificação / 2.Entrada do Processo / 3.Diagnóstico / 4.Execução Passo a Passo / 5.Controle de Risco / 6.Saída do Processo / 7.Indicadores / 8.Histórico de Atualizações. Seja específico, acionável e expanda cada seção com substeps e orientações práticas baseadas nos dados fornecidos.`;
+${linha('Tipo', d.tipo_proc || 'Não especificado')}
+${linha('Natureza', d.natureza || 'Não especificado')}
+${linha('Prioridade', d.prioridade || 'Não especificado')}
 
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await resp.json();
-    const popText = data.content?.map(b => b.text||'').join('') || 'Erro ao gerar.';
+Impacto:
+  ${impacto}
 
-    const record = {
-      id: Date.now(),
-      nome: d.nome, area: d.area, tipo: d.tipo,
-      versao: d.versao, status: d.status,
-      data: new Date().toLocaleDateString('pt-BR'),
-      pop: popText, etapas: d.etapas, formData: d
-    };
-    history.unshift(record);
-    saveHistory();
-    currentRecord = record;
-    showResult(record);
-  } catch(e) {
-    document.getElementById('form-err').textContent = 'Erro ao conectar. Verifique sua conexão e tente novamente.';
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ti ti-sparkles"></i> Gerar POP e fluxograma';
-  }
+${sep}
+
+🔎 3. DIAGNÓSTICO
+${sep2}
+Objetivo do Diagnóstico:
+  ${d.diag_obj || 'Não especificado'}
+
+Checklist de Verificação:
+${checklist}
+
+${sep}
+
+🔄 4. EXECUÇÃO — PASSO A PASSO
+${sep2}
+Etapas (em ordem cronológica):
+${etapas}
+
+${linha('Primeira Ação', d.primeira_acao || 'Não especificado')}
+${linha('Prazo Máximo', d.prazo || 'Não especificado')}
+
+Ferramentas Utilizadas:
+${tools}
+
+${sep}
+
+⚠️ 5. CONTROLE DE RISCO
+${sep2}
+O que JAMAIS fazer:
+  ${d.nao_fazer || 'Não especificado'}
+
+Exceções — quando este processo pode ser ajustado:
+  ${d.excecoes || 'Não especificado'}
+
+Erros que já aprendemos:
+  ${d.erros || 'Não especificado'}
+
+Quando Escalar:
+  ${d.escalar_quando || 'Não especificado'}
+
+${linha('Escalar Para', d.escalar_para || 'Não especificado')}
+
+${sep}
+
+📤 6. SAÍDA DO PROCESSO
+${sep2}
+Critério de Conclusão:
+  ${d.conclusao || 'Não especificado'}
+
+Registro Obrigatório após Finalizar:
+${registros}
+
+${sep}
+
+📊 7. INDICADORES RELACIONADOS
+${sep2}
+${indicadores}
+
+${sep}
+
+📎 8. HISTÓRICO DE ATUALIZAÇÕES
+${sep2}
+${linha('Elaborado por', d.autor || 'A preencher')}
+${linha('Aprovado por', d.aprovador || 'A preencher')}
+${linha('Vigência', d.vigencia || 'A definir')}
+${linha('Revisão', d.revisao || 'A definir')}
+${linha('Status', d.status)}
+
+Versões:
+  VERSÃO | DATA | ALTERAÇÃO | RESPONSÁVEL
+  ${'─'.repeat(50)}
+${versao_hist}
+
+${sep}
+Documento gerado em ${hoje} — Cellfy Central de POPs`;
+
+  const record = {
+    id: Date.now(),
+    nome: d.nome, area: d.area, tipo: d.tipo,
+    versao: d.versao, status: d.status,
+    data: hoje, pop, etapas: d.etapas, formData: d
+  };
+  history.unshift(record);
+  saveHistory();
+  currentRecord = record;
+  showResult(record);
 }
 
 // ── SHOW RESULT ──
