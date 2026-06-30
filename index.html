@@ -556,6 +556,7 @@ textarea{resize:vertical;min-height:72px;}
         </div>
         <div style="display:flex;gap:8px;">
           <button class="btn-ghost" onclick="copyResult()"><i class="ti ti-copy"></i> Copiar</button>
+          <button class="btn-ghost" id="drive-save-btn" onclick="salvarDrive()" style="display:none;"><i class="ti ti-brand-google-drive"></i> Salvar no Drive</button>
           <button class="btn-ghost" id="notion-save-btn" onclick="salvarNotion()" style="display:none;"><i class="ti ti-brand-notion"></i> Salvar no Notion</button>
           <button class="btn-ghost" onclick="showView('form')"><i class="ti ti-plus"></i> Novo</button>
         </div>
@@ -598,6 +599,23 @@ textarea{resize:vertical;min-height:72px;}
           </div>
           <div id="notion-cfg-status" class="notion-status"></div>
         </div>
+
+        <div class="notion-panel" style="border-color:rgba(0,196,140,.25);background:rgba(0,196,140,.05);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <i class="ti ti-brand-google-drive" style="font-size:20px;color:var(--success);"></i>
+            <span style="font-size:14px;font-weight:500;color:var(--text);">Integração Google Drive</span>
+          </div>
+          <div class="info-box" style="background:rgba(0,196,140,.06);border-color:rgba(0,196,140,.18);">
+            <i class="ti ti-info-circle" style="color:var(--success);"></i>
+            <p>Cole aqui a URL do Apps Script (Web App) publicado no Google Drive da Cellfy. Cada POP gerado pode ser salvo como um Google Doc formatado na pasta configurada.</p>
+          </div>
+          <div class="fg" style="margin-bottom:6px;">
+            <label style="color:var(--success);">URL do Apps Script (Web App)</label>
+            <input type="text" id="cfg-drive-url" placeholder="https://script.google.com/macros/s/.../exec" oninput="salvarConfigDrive()" />
+          </div>
+          <div id="drive-cfg-status" class="notion-status"></div>
+        </div>
+
         <div class="form-section" style="margin-top:24px;">
           <div class="form-section-header">
             <div class="form-section-icon"><i class="ti ti-trash"></i></div>
@@ -634,6 +652,7 @@ function init() {
   document.getElementById('f_vigencia').value = today;
   document.getElementById('v_data').value = today;
   loadConfig();
+  loadDriveConfig();
   renderSidebar();
 }
 
@@ -937,6 +956,8 @@ function showResult(rec) {
   document.getElementById('r-title').textContent = rec.nome;
   const notionCfg = loadConfig();
   document.getElementById('notion-save-btn').style.display = notionCfg.token && notionCfg.db ? 'flex' : 'none';
+  const driveCfg = loadDriveConfig();
+  document.getElementById('drive-save-btn').style.display = driveCfg.url ? 'flex' : 'none';
   document.getElementById('r-meta').innerHTML = `
     <span class="badge ${rec.tipo==='novo'?'badge-new':'badge-update'}">${rec.tipo==='novo'?'Novo':'Atualização'}</span>
     <span class="badge badge-sector">${rec.area}</span>
@@ -982,6 +1003,51 @@ function copyResult() {
 }
 
 // ── NOTION SAVE ──
+// ── GOOGLE DRIVE SAVE ──
+async function salvarDrive() {
+  const cfg = loadDriveConfig();
+  if (!cfg.url || !currentRecord) return;
+  const btn = document.getElementById('drive-save-btn');
+  const orig = btn.innerHTML;
+  btn.innerHTML = 'Salvando...';
+  btn.disabled = true;
+  try {
+    const payload = { ...currentRecord.formData, nome: currentRecord.nome, versao: currentRecord.versao };
+    const resp = await fetch(cfg.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (data.success) {
+      btn.innerHTML = '<i class="ti ti-check"></i> Salvo no Drive!';
+      setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
+    } else {
+      btn.innerHTML = 'Erro — verifique a URL';
+      setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
+    }
+  } catch(e) {
+    btn.innerHTML = 'Erro de conexão';
+    setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
+  }
+}
+
+function loadDriveConfig() {
+  try {
+    const cfg = JSON.parse(localStorage.getItem('cellfy_drive_cfg') || '{}');
+    const el = document.getElementById('cfg-drive-url');
+    if (el && cfg.url) el.value = cfg.url;
+    return cfg;
+  } catch(e) { return {}; }
+}
+function salvarConfigDrive() {
+  const cfg = { url: document.getElementById('cfg-drive-url').value.trim() };
+  localStorage.setItem('cellfy_drive_cfg', JSON.stringify(cfg));
+  const status = document.getElementById('drive-cfg-status');
+  if (cfg.url) { status.className = 'notion-status ok'; status.textContent = '✓ Configuração salva — Google Drive ativado'; }
+  else { status.className = 'notion-status'; status.textContent = 'Cole a URL do Apps Script para ativar.'; }
+}
+
 async function salvarNotion() {
   const cfg = loadConfig();
   if (!cfg.token || !cfg.db || !currentRecord) return;
