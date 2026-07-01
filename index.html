@@ -567,7 +567,16 @@ textarea{resize:vertical;min-height:72px;}
       </div>
       <div class="scroll-area">
         <div id="rpane-doc"><pre class="pop-doc" id="pop-output"></pre></div>
-        <div id="rpane-flow" style="display:none;"><div class="flowchart-wrap"><div class="flow-col" id="flow-nodes"></div></div></div>
+        <div id="rpane-flow" style="display:none;">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+            <button class="btn-ghost" id="drawio-btn" onclick="abrirDrawio()" style="border-color:rgba(0,212,240,.3);color:var(--cyan);">
+              <i class="ti ti-pencil"></i> Editar no draw.io
+            </button>
+          </div>
+          <div class="flowchart-wrap" style="overflow-x:auto;">
+            <div id="flow-nodes" style="min-width:600px;"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -980,16 +989,202 @@ function switchResult(tab) {
 // ── FLOWCHART ──
 function renderFlowchart(etapas) {
   const el = document.getElementById('flow-nodes');
+  
+  // Detecta se tem cenários (ramificações)
+  const temCenarios = etapas.some(e => /cenário|cenario|CENÁRIO/i.test(e));
+  
+  if (temCenarios) {
+    renderFlowchartBranched(el, etapas);
+  } else {
+    renderFlowchartLinear(el, etapas);
+  }
+}
+
+function renderFlowchartLinear(el, etapas) {
   const isDecision = s => /\bse\b|\bquando\b|\bcaso\b|verificar|confirmar|checar/i.test(s);
   const isException = s => /escalar|erro|falha|problema|urgente/i.test(s);
-  let html = `<div class="flow-node-box start"><i class="ti ti-player-play"></i> Início</div>`;
+  let html = '<div style="display:flex;flex-direction:column;align-items:center;">';
+  html += `<div class="flow-node-box start"><i class="ti ti-player-play"></i> Início</div>`;
   etapas.forEach(e => {
     html += `<div class="flow-arrow">↓</div>`;
     const cls = isException(e) ? 'exception' : isDecision(e) ? 'decision' : 'action';
     html += `<div class="flow-node-box ${cls}" style="font-size:11px;">${e}</div>`;
   });
   html += `<div class="flow-arrow">↓</div><div class="flow-node-box end"><i class="ti ti-flag"></i> Fim</div>`;
+  html += '</div>';
   el.innerHTML = html;
+}
+
+function renderFlowchartBranched(el, etapas) {
+  // Agrupa etapas em cenários
+  const cenarios = [];
+  let atual = null;
+
+  etapas.forEach(e => {
+    if (/cenário|cenario|CENÁRIO/i.test(e)) {
+      if (atual) cenarios.push(atual);
+      atual = { titulo: e, passos: [] };
+    } else if (atual) {
+      atual.passos.push(e);
+    } else {
+      // etapas antes do primeiro cenário
+      if (!cenarios.length) cenarios.push({ titulo: '__pre__', passos: [] });
+      cenarios[0].passos.push(e);
+    }
+  });
+  if (atual) cenarios.push(atual);
+
+  const preEtapas = cenarios[0]?.titulo === '__pre__' ? cenarios.shift().passos : [];
+  const cenarioList = cenarios;
+
+  let html = '<div style="display:flex;flex-direction:column;align-items:center;gap:0;">';
+  
+  // Início
+  html += `<div class="flow-node-box start" style="margin-bottom:4px;"><i class="ti ti-player-play"></i> Início</div>`;
+  
+  // Etapas pré-cenário
+  preEtapas.forEach(e => {
+    html += `<div class="flow-arrow">↓</div>`;
+    html += `<div class="flow-node-box action" style="font-size:11px;">${e}</div>`;
+  });
+
+  if (cenarioList.length > 0) {
+    html += `<div class="flow-arrow">↓</div>`;
+    html += `<div class="flow-node-box decision" style="font-size:12px;font-weight:600;">Qual o cenário?</div>`;
+    html += `<div class="flow-arrow">↓</div>`;
+
+    // Colunas de cenários
+    const cols = cenarioList.length;
+    html += `<div style="display:flex;gap:16px;align-items:flex-start;justify-content:center;width:100%;">`;
+    cenarioList.forEach((c, ci) => {
+      html += `<div style="display:flex;flex-direction:column;align-items:center;min-width:180px;max-width:220px;">`;
+      // Cabeçalho do cenário
+      html += `<div class="flow-node-box decision" style="font-size:11px;font-weight:600;width:100%;margin-bottom:4px;">${c.titulo}</div>`;
+      // Passos do cenário
+      c.passos.forEach(p => {
+        const isD = /\bse\b|verificar|confirmar|se\s+poss/i.test(p);
+        const isE = /escalar|urgente|sinistro/i.test(p);
+        const cls = isE ? 'exception' : isD ? 'decision' : 'action';
+        html += `<div class="flow-arrow">↓</div>`;
+        html += `<div class="flow-node-box ${cls}" style="font-size:10px;width:100%;">${p}</div>`;
+      });
+      html += `<div class="flow-arrow">↓</div>`;
+      html += `<div class="flow-node-box end" style="font-size:11px;">Fim</div>`;
+      html += `</div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ── DRAW.IO EXPORT ──
+function abrirDrawio() {
+  if (!currentRecord) return;
+  const etapas = currentRecord.etapas || [];
+  const temCenarios = etapas.some(e => /cenário|cenario/i.test(e));
+  
+  let xml = '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>';
+  let id = 2;
+  let y = 20;
+  const cx = 300;
+  const w = 200;
+  const h = 40;
+  const gap = 60;
+
+  const addNode = (label, tipo, x, yPos, width) => {
+    const wd = width || w;
+    const style = tipo === 'start' || tipo === 'end'
+      ? 'rounded=1;whiteSpace=wrap;fillColor=#00d4f0;strokeColor=#00a8c8;fontColor=#fff;fontStyle=1;'
+      : tipo === 'decision'
+      ? 'rhombus;whiteSpace=wrap;fillColor=#7c3fff;strokeColor=#5a2ecc;fontColor=#fff;fontStyle=1;'
+      : tipo === 'exception'
+      ? 'rounded=1;whiteSpace=wrap;fillColor=#ff5c6a;strokeColor=#cc3a46;fontColor=#fff;'
+      : 'rounded=1;whiteSpace=wrap;fillColor=#18181f;strokeColor=#444;fontColor=#eee;';
+    const nodeId = id++;
+    xml += `<mxCell id="${nodeId}" value="${label.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}" style="${style}" vertex="1" parent="1"><mxGeometry x="${x}" y="${yPos}" width="${wd}" height="${h}" as="geometry"/></mxCell>`;
+    return nodeId;
+  };
+
+  const addEdge = (src, tgt, label) => {
+    xml += `<mxCell id="${id++}" value="${label||''}" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="${src}" target="${tgt}" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>`;
+  };
+
+  if (!temCenarios) {
+    const startId = addNode('Início', 'start', cx, y, w);
+    let prevId = startId;
+    y += h + gap;
+    etapas.forEach(e => {
+      const isD = /\bse\b|verificar|confirmar/i.test(e);
+      const isE = /escalar|urgente/i.test(e);
+      const tipo = isE ? 'exception' : isD ? 'decision' : 'action';
+      const nId = addNode(e, tipo, cx, y, w);
+      addEdge(prevId, nId, '');
+      prevId = nId;
+      y += h + gap;
+    });
+    const endId = addNode('Fim', 'end', cx, y, w);
+    addEdge(prevId, endId, '');
+  } else {
+    // Com cenários — ramificado
+    const cenarios = [];
+    let atual = null;
+    const preEtapas = [];
+    etapas.forEach(e => {
+      if (/cenário|cenario/i.test(e)) {
+        if (atual) cenarios.push(atual);
+        atual = { titulo: e, passos: [] };
+      } else if (atual) {
+        atual.passos.push(e);
+      } else {
+        preEtapas.push(e);
+      }
+    });
+    if (atual) cenarios.push(atual);
+
+    const startId = addNode('Início', 'start', cx, y, w);
+    let prevId = startId;
+    y += h + gap;
+
+    preEtapas.forEach(e => {
+      const nId = addNode(e, 'action', cx, y, w);
+      addEdge(prevId, nId, '');
+      prevId = nId;
+      y += h + gap;
+    });
+
+    const decId = addNode('Qual o cenário?', 'decision', cx, y, w);
+    addEdge(prevId, decId, '');
+    y += h + gap;
+
+    const colW = 220;
+    const totalW = cenarios.length * (colW + 30);
+    let startX = cx - totalW / 2 + 15;
+
+    cenarios.forEach((c, ci) => {
+      const colX = startX + ci * (colW + 30);
+      let cy = y;
+      const hId = addNode(c.titulo, 'decision', colX, cy, colW);
+      addEdge(decId, hId, c.titulo.substring(0, 20));
+      cy += h + gap;
+      let prev = hId;
+      c.passos.forEach(p => {
+        const isD = /\bse\b|verificar|confirmar/i.test(p);
+        const nId = addNode(p, isD ? 'decision' : 'action', colX, cy, colW);
+        addEdge(prev, nId, '');
+        prev = nId;
+        cy += h + gap;
+      });
+      const endId = addNode('Fim', 'end', colX, cy, colW);
+      addEdge(prev, endId, '');
+    });
+  }
+
+  xml += '</root></mxGraphModel>';
+  const encoded = encodeURIComponent(xml);
+  const url = `https://app.diagrams.net/?src=about&xml=${encoded}`;
+  window.open(url, '_blank');
 }
 
 // ── COPY ──
