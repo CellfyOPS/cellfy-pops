@@ -556,6 +556,7 @@ textarea{resize:vertical;min-height:72px;}
         </div>
         <div style="display:flex;gap:8px;">
           <button class="btn-ghost" onclick="copyResult()"><i class="ti ti-copy"></i> Copiar</button>
+          <button class="btn-ghost" onclick="abrirDrawio()" style="border-color:rgba(0,212,240,.3);color:var(--cyan);"><i class="ti ti-pencil"></i> Editar fluxo</button>
           <button class="btn-ghost" id="drive-save-btn" onclick="salvarDrive()" style="display:none;"><i class="ti ti-brand-google-drive"></i> Salvar no Drive</button>
           <button class="btn-ghost" id="notion-save-btn" onclick="salvarNotion()" style="display:none;"><i class="ti ti-brand-notion"></i> Salvar no Notion</button>
           <button class="btn-ghost" onclick="showView('form')"><i class="ti ti-plus"></i> Novo</button>
@@ -568,13 +569,51 @@ textarea{resize:vertical;min-height:72px;}
       <div class="scroll-area">
         <div id="rpane-doc"><pre class="pop-doc" id="pop-output"></pre></div>
         <div id="rpane-flow" style="display:none;">
-          <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
-            <button class="btn-ghost" id="drawio-btn" onclick="abrirDrawio()" style="border-color:rgba(0,212,240,.3);color:var(--cyan);">
-              <i class="ti ti-pencil"></i> Editar no draw.io
-            </button>
+          <!-- TOOLBAR -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+            <span style="font-size:12px;color:var(--text2);">Clique em qualquer nó para editar</span>
+            <div style="margin-left:auto;display:flex;gap:8px;">
+              <button class="btn-ghost" onclick="flowAddNode()" style="font-size:12px;padding:6px 12px;"><i class="ti ti-plus"></i> Adicionar etapa</button>
+              <button class="btn-ghost" onclick="abrirDrawio()" style="border-color:rgba(0,212,240,.3);color:var(--cyan);font-size:12px;padding:6px 12px;"><i class="ti ti-external-link"></i> Abrir no draw.io</button>
+              <button class="btn-ghost" onclick="flowSalvar()" style="border-color:rgba(0,196,140,.3);color:var(--success);font-size:12px;padding:6px 12px;"><i class="ti ti-device-floppy"></i> Salvar edição</button>
+            </div>
           </div>
+          <!-- EDITOR MODAL -->
+          <div id="flow-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center;">
+            <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:24px;width:440px;max-width:90vw;">
+              <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:16px;">Editar etapa</div>
+              <div class="fg" style="margin-bottom:12px;">
+                <label>Texto da etapa</label>
+                <textarea id="flow-edit-text" style="min-height:80px;"></textarea>
+              </div>
+              <div class="fg" style="margin-bottom:16px;">
+                <label>Tipo</label>
+                <select id="flow-edit-type">
+                  <option value="action">▶️ Ação</option>
+                  <option value="decision">🔷 Decisão / Cenário</option>
+                  <option value="exception">⚠️ Exceção / Escalada</option>
+                </select>
+              </div>
+              <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button class="btn-ghost" onclick="flowEditClose()" style="font-size:12px;">Cancelar</button>
+                <button class="btn-ghost" onclick="flowEditMoveUp()" style="font-size:12px;"><i class="ti ti-arrow-up"></i></button>
+                <button class="btn-ghost" onclick="flowEditMoveDown()" style="font-size:12px;"><i class="ti ti-arrow-down"></i></button>
+                <button class="btn-ghost" onclick="flowEditDelete()" style="border-color:rgba(255,92,106,.3);color:var(--danger);font-size:12px;"><i class="ti ti-trash"></i> Excluir</button>
+                <button class="btn-grad" onclick="flowEditSave()" style="font-size:12px;">Salvar</button>
+              </div>
+            </div>
+          </div>
+          <!-- CANVAS -->
           <div class="flowchart-wrap" style="overflow-x:auto;">
-            <div id="flow-nodes" style="min-width:600px;"></div>
+            <div id="flow-nodes" style="min-width:640px;"></div>
+          </div>
+        </div>
+        <div id="rpane-audit" style="display:none;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;">
+            <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+              <i class="ti ti-timeline" style="color:var(--cyan);"></i> Linha do tempo de alterações
+            </div>
+            <div id="audit-list"></div>
           </div>
         </div>
       </div>
@@ -662,6 +701,7 @@ function init() {
   document.getElementById('v_data').value = today;
   loadConfig();
   loadDriveConfig();
+  loadUsuario();
   renderSidebar();
 }
 
@@ -947,11 +987,21 @@ ${versao_hist}
 ${sep}
 Documento gerado em ${hoje} — Cellfy Central de POPs`;
 
+  const usuario = getUsuario();
+  const auditEntry = {
+    ts: new Date().toISOString(),
+    data: hoje,
+    hora: new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}),
+    autor: usuario,
+    acao: d.tipo === 'novo' ? 'POP criado' : `Atualização (ref: ${d.ref || '-'})`,
+    versao: d.versao
+  };
   const record = {
     id: Date.now(),
     nome: d.nome, area: d.area, tipo: d.tipo,
     versao: d.versao, status: d.status,
-    data: hoje, pop, etapas: d.etapas, formData: d
+    data: hoje, pop, etapas: d.etapas, formData: d,
+    audit: [auditEntry]
   };
   history.unshift(record);
   saveHistory();
@@ -973,6 +1023,7 @@ function showResult(rec) {
     <span class="badge badge-sector">v${rec.versao}</span>
     <span class="badge badge-sector">${rec.data}</span>
     <span class="badge badge-status-${rec.status||'ativo'}">${rec.status||'ativo'}</span>`;
+  renderAuditLog(rec);
   document.getElementById('pop-output').textContent = rec.pop;
   renderFlowchart(rec.etapas || []);
   switchResult('doc');
@@ -980,211 +1031,238 @@ function showResult(rec) {
 }
 
 function switchResult(tab) {
-  document.getElementById('rpane-doc').style.display = tab==='doc'?'block':'none';
-  document.getElementById('rpane-flow').style.display = tab==='flow'?'block':'none';
-  document.getElementById('rtab-doc').classList.toggle('active', tab==='doc');
-  document.getElementById('rtab-flow').classList.toggle('active', tab==='flow');
+  ['doc','flow','audit'].forEach(t => {
+    document.getElementById('rpane-' + t).style.display = t === tab ? 'block' : 'none';
+    document.getElementById('rtab-' + t).classList.toggle('active', t === tab);
+  });
 }
 
 // ── FLOWCHART ──
+// ── FLOWCHART STATE ──
+let flowNodes = []; // [{id, text, type}]
+let flowEditingId = null;
+
 function renderFlowchart(etapas) {
+  // Build flowNodes from etapas
+  flowNodes = etapas.map((e, i) => ({
+    id: i,
+    text: e,
+    type: /^(SE|QUANDO|CASO|CENÁRIO)\s*[-—]|cenário|cenario/i.test(e.trim()) ? 'decision'
+        : /escalar|urgente|sinistro/i.test(e) ? 'exception'
+        : 'action'
+  }));
+  renderFlowCanvas();
+}
+
+function renderFlowCanvas() {
   const el = document.getElementById('flow-nodes');
-  
-  // Detecta se tem cenários (ramificações)
-  const temCenarios = etapas.some(e => /cenário|cenario|CENÁRIO/i.test(e));
-  
+  const temCenarios = flowNodes.some(n => n.type === 'decision' && /cenário|cenario/i.test(n.text));
+
   if (temCenarios) {
-    renderFlowchartBranched(el, etapas);
+    renderBranched(el);
   } else {
-    renderFlowchartLinear(el, etapas);
+    renderLinear(el);
   }
 }
 
-function renderFlowchartLinear(el, etapas) {
-  const isDecision = s => /\bse\b|\bquando\b|\bcaso\b|verificar|confirmar|checar/i.test(s);
-  const isException = s => /escalar|erro|falha|problema|urgente/i.test(s);
-  let html = '<div style="display:flex;flex-direction:column;align-items:center;">';
-  html += `<div class="flow-node-box start"><i class="ti ti-player-play"></i> Início</div>`;
-  etapas.forEach(e => {
-    html += `<div class="flow-arrow">↓</div>`;
-    const cls = isException(e) ? 'exception' : isDecision(e) ? 'decision' : 'action';
-    html += `<div class="flow-node-box ${cls}" style="font-size:11px;">${e}</div>`;
+function renderLinear(el) {
+  let html = '<div style="display:flex;flex-direction:column;align-items:center;gap:0;">';
+  html += nodeHTML({id:-1, text:'Início', type:'start'}, false);
+  flowNodes.forEach(n => {
+    html += '<div class="flow-arrow">↓</div>';
+    html += nodeHTML(n, true);
   });
-  html += `<div class="flow-arrow">↓</div><div class="flow-node-box end"><i class="ti ti-flag"></i> Fim</div>`;
+  html += '<div class="flow-arrow">↓</div>';
+  html += nodeHTML({id:-2, text:'Fim', type:'end'}, false);
   html += '</div>';
   el.innerHTML = html;
 }
 
-function renderFlowchartBranched(el, etapas) {
-  // Agrupa etapas em cenários
+function renderBranched(el) {
   const cenarios = [];
   let atual = null;
-
-  etapas.forEach(e => {
-    if (/cenário|cenario|CENÁRIO/i.test(e)) {
+  const pre = [];
+  flowNodes.forEach(n => {
+    if (/cenário|cenario/i.test(n.text)) {
       if (atual) cenarios.push(atual);
-      atual = { titulo: e, passos: [] };
+      atual = { node: n, passos: [] };
     } else if (atual) {
-      atual.passos.push(e);
+      atual.passos.push(n);
     } else {
-      // etapas antes do primeiro cenário
-      if (!cenarios.length) cenarios.push({ titulo: '__pre__', passos: [] });
-      cenarios[0].passos.push(e);
+      pre.push(n);
     }
   });
   if (atual) cenarios.push(atual);
 
-  const preEtapas = cenarios[0]?.titulo === '__pre__' ? cenarios.shift().passos : [];
-  const cenarioList = cenarios;
-
   let html = '<div style="display:flex;flex-direction:column;align-items:center;gap:0;">';
-  
-  // Início
-  html += `<div class="flow-node-box start" style="margin-bottom:4px;"><i class="ti ti-player-play"></i> Início</div>`;
-  
-  // Etapas pré-cenário
-  preEtapas.forEach(e => {
-    html += `<div class="flow-arrow">↓</div>`;
-    html += `<div class="flow-node-box action" style="font-size:11px;">${e}</div>`;
-  });
+  html += nodeHTML({id:-1, text:'Início', type:'start'}, false);
+  pre.forEach(n => { html += '<div class="flow-arrow">↓</div>' + nodeHTML(n, true); });
 
-  if (cenarioList.length > 0) {
-    html += `<div class="flow-arrow">↓</div>`;
-    html += `<div class="flow-node-box decision" style="font-size:12px;font-weight:600;">Qual o cenário?</div>`;
-    html += `<div class="flow-arrow">↓</div>`;
-
-    // Colunas de cenários
-    const cols = cenarioList.length;
-    html += `<div style="display:flex;gap:16px;align-items:flex-start;justify-content:center;width:100%;">`;
-    cenarioList.forEach((c, ci) => {
-      html += `<div style="display:flex;flex-direction:column;align-items:center;min-width:180px;max-width:220px;">`;
-      // Cabeçalho do cenário
-      html += `<div class="flow-node-box decision" style="font-size:11px;font-weight:600;width:100%;margin-bottom:4px;">${c.titulo}</div>`;
-      // Passos do cenário
+  if (cenarios.length) {
+    html += '<div class="flow-arrow">↓</div>';
+    html += '<div class="flow-node-box decision" style="font-size:12px;font-weight:600;cursor:default;">Qual o cenário?</div>';
+    html += '<div class="flow-arrow">↓</div>';
+    html += '<div style="display:flex;gap:16px;align-items:flex-start;justify-content:center;flex-wrap:wrap;width:100%;padding:0 8px;">';
+    cenarios.forEach(c => {
+      html += '<div style="display:flex;flex-direction:column;align-items:center;min-width:190px;max-width:230px;">';
+      html += nodeHTML(c.node, true, '100%');
       c.passos.forEach(p => {
-        const isD = /\bse\b|verificar|confirmar|se\s+poss/i.test(p);
-        const isE = /escalar|urgente|sinistro/i.test(p);
-        const cls = isE ? 'exception' : isD ? 'decision' : 'action';
-        html += `<div class="flow-arrow">↓</div>`;
-        html += `<div class="flow-node-box ${cls}" style="font-size:10px;width:100%;">${p}</div>`;
+        html += '<div class="flow-arrow">↓</div>' + nodeHTML(p, true, '100%');
       });
-      html += `<div class="flow-arrow">↓</div>`;
-      html += `<div class="flow-node-box end" style="font-size:11px;">Fim</div>`;
-      html += `</div>`;
+      html += '<div class="flow-arrow">↓</div>';
+      html += '<div class="flow-node-box end" style="font-size:11px;width:100%;">Fim</div>';
+      html += '</div>';
     });
-    html += `</div>`;
+    html += '</div>';
   }
-
   html += '</div>';
   el.innerHTML = html;
 }
 
+function nodeHTML(n, editable, width) {
+  const cls = n.type === 'start' ? 'start'
+    : n.type === 'end' ? 'end'
+    : n.type === 'decision' ? 'decision'
+    : n.type === 'exception' ? 'exception'
+    : 'action';
+  const w = width ? `width:${width};` : '';
+  const cursor = editable ? 'cursor:pointer;' : 'cursor:default;';
+  const onclick = editable ? `onclick="flowEditOpen(${n.id})"` : '';
+  const title = editable ? 'title="Clique para editar"' : '';
+  const editIcon = editable ? `<span style="opacity:0.4;font-size:10px;margin-left:4px;">✎</span>` : '';
+  return `<div class="flow-node-box ${cls}" style="font-size:11px;${w}${cursor}position:relative;" ${onclick} ${title}>${n.text}${editIcon}</div>`;
+}
+
+// ── EDITOR FUNCTIONS ──
+function flowEditOpen(id) {
+  const node = flowNodes.find(n => n.id === id);
+  if (!node) return;
+  flowEditingId = id;
+  document.getElementById('flow-edit-text').value = node.text;
+  document.getElementById('flow-edit-type').value = node.type;
+  const modal = document.getElementById('flow-edit-modal');
+  modal.style.display = 'flex';
+  document.getElementById('flow-edit-text').focus();
+}
+
+function flowEditClose() {
+  document.getElementById('flow-edit-modal').style.display = 'none';
+  flowEditingId = null;
+}
+
+function flowEditSave() {
+  if (flowEditingId === null) return;
+  const idx = flowNodes.findIndex(n => n.id === flowEditingId);
+  if (idx === -1) return;
+  flowNodes[idx].text = document.getElementById('flow-edit-text').value.trim() || flowNodes[idx].text;
+  flowNodes[idx].type = document.getElementById('flow-edit-type').value;
+  flowEditClose();
+  renderFlowCanvas();
+}
+
+function flowEditDelete() {
+  if (flowEditingId === null) return;
+  if (!confirm('Excluir esta etapa do fluxograma?')) return;
+  flowNodes = flowNodes.filter(n => n.id !== flowEditingId);
+  flowEditClose();
+  renderFlowCanvas();
+}
+
+function flowEditMoveUp() {
+  const idx = flowNodes.findIndex(n => n.id === flowEditingId);
+  if (idx <= 0) return;
+  [flowNodes[idx-1], flowNodes[idx]] = [flowNodes[idx], flowNodes[idx-1]];
+  renderFlowCanvas();
+}
+
+function flowEditMoveDown() {
+  const idx = flowNodes.findIndex(n => n.id === flowEditingId);
+  if (idx === -1 || idx >= flowNodes.length - 1) return;
+  [flowNodes[idx], flowNodes[idx+1]] = [flowNodes[idx+1], flowNodes[idx]];
+  renderFlowCanvas();
+}
+
+function flowAddNode() {
+  const newId = Date.now();
+  flowNodes.push({ id: newId, text: 'Nova etapa', type: 'action' });
+  renderFlowCanvas();
+  setTimeout(() => flowEditOpen(newId), 50);
+}
+
+function flowSalvar() {
+  if (!currentRecord) return;
+  currentRecord.etapas = flowNodes.map(n => n.text);
+  const idx = history.findIndex(r => r.id === currentRecord.id);
+  if (idx !== -1) {
+    history[idx].etapas = currentRecord.etapas;
+    addAuditEntry(history[idx], 'Fluxograma editado manualmente');
+    currentRecord = history[idx];
+    saveHistory();
+  }
+  const btn = event.target.closest('button');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-check"></i> Salvo!';
+  setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  renderAuditLog(currentRecord);
+}
+
 // ── DRAW.IO EXPORT ──
 function abrirDrawio() {
-  if (!currentRecord) return;
-  const etapas = currentRecord.etapas || [];
-  const temCenarios = etapas.some(e => /cenário|cenario/i.test(e));
-  
+  if (!flowNodes.length) return;
   let xml = '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>';
-  let id = 2;
-  let y = 20;
-  const cx = 300;
-  const w = 200;
-  const h = 40;
-  const gap = 60;
+  let id = 2; let y = 20;
+  const cx = 300, w = 200, h = 44, gap = 56;
 
-  const addNode = (label, tipo, x, yPos, width) => {
-    const wd = width || w;
-    const style = tipo === 'start' || tipo === 'end'
-      ? 'rounded=1;whiteSpace=wrap;fillColor=#00d4f0;strokeColor=#00a8c8;fontColor=#fff;fontStyle=1;'
-      : tipo === 'decision'
-      ? 'rhombus;whiteSpace=wrap;fillColor=#7c3fff;strokeColor=#5a2ecc;fontColor=#fff;fontStyle=1;'
-      : tipo === 'exception'
-      ? 'rounded=1;whiteSpace=wrap;fillColor=#ff5c6a;strokeColor=#cc3a46;fontColor=#fff;'
-      : 'rounded=1;whiteSpace=wrap;fillColor=#18181f;strokeColor=#444;fontColor=#eee;';
-    const nodeId = id++;
-    xml += `<mxCell id="${nodeId}" value="${label.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}" style="${style}" vertex="1" parent="1"><mxGeometry x="${x}" y="${yPos}" width="${wd}" height="${h}" as="geometry"/></mxCell>`;
-    return nodeId;
+  const styleMap = {
+    start: 'ellipse;whiteSpace=wrap;fillColor=#00d4f0;strokeColor=#00a8c8;fontColor=#fff;fontStyle=1;',
+    end:   'ellipse;whiteSpace=wrap;fillColor=#444;strokeColor=#666;fontColor=#fff;fontStyle=1;',
+    decision: 'rhombus;whiteSpace=wrap;fillColor=#7c3fff;strokeColor=#5a2ecc;fontColor=#fff;fontStyle=1;',
+    exception: 'rounded=1;whiteSpace=wrap;fillColor=#ff5c6a;strokeColor=#cc3a46;fontColor=#fff;',
+    action: 'rounded=1;whiteSpace=wrap;fillColor=#18181f;strokeColor=#444;fontColor=#eee;'
   };
 
-  const addEdge = (src, tgt, label) => {
-    xml += `<mxCell id="${id++}" value="${label||''}" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="${src}" target="${tgt}" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>`;
+  const addNode = (text, type, x, yp, wd) => {
+    const nid = id++;
+    const safe = (text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    xml += `<mxCell id="${nid}" value="${safe}" style="${styleMap[type]||styleMap.action}" vertex="1" parent="1"><mxGeometry x="${x}" y="${yp}" width="${wd||w}" height="${h}" as="geometry"/></mxCell>`;
+    return nid;
   };
+  const addEdge = (s, t, lbl) => {
+    xml += `<mxCell id="${id++}" value="${lbl||''}" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" source="${s}" target="${t}" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>`;
+  };
+
+  const temCenarios = flowNodes.some(n => /cenário|cenario/i.test(n.text));
 
   if (!temCenarios) {
-    const startId = addNode('Início', 'start', cx, y, w);
-    let prevId = startId;
-    y += h + gap;
-    etapas.forEach(e => {
-      const isD = /\bse\b|verificar|confirmar/i.test(e);
-      const isE = /escalar|urgente/i.test(e);
-      const tipo = isE ? 'exception' : isD ? 'decision' : 'action';
-      const nId = addNode(e, tipo, cx, y, w);
-      addEdge(prevId, nId, '');
-      prevId = nId;
-      y += h + gap;
+    const sId = addNode('Início','start',cx,y,w); let prev = sId; y += h+gap;
+    flowNodes.forEach(n => {
+      const nId = addNode(n.text, n.type, cx, y, w);
+      addEdge(prev, nId, ''); prev = nId; y += h+gap;
     });
-    const endId = addNode('Fim', 'end', cx, y, w);
-    addEdge(prevId, endId, '');
+    const eId = addNode('Fim','end',cx,y,w); addEdge(prev,eId,'');
   } else {
-    // Com cenários — ramificado
-    const cenarios = [];
-    let atual = null;
-    const preEtapas = [];
-    etapas.forEach(e => {
-      if (/cenário|cenario/i.test(e)) {
-        if (atual) cenarios.push(atual);
-        atual = { titulo: e, passos: [] };
-      } else if (atual) {
-        atual.passos.push(e);
-      } else {
-        preEtapas.push(e);
-      }
+    const cenarios=[]; let atual=null; const pre=[];
+    flowNodes.forEach(n => {
+      if(/cenário|cenario/i.test(n.text)){if(atual)cenarios.push(atual);atual={node:n,passos:[]};}
+      else if(atual){atual.passos.push(n);}else{pre.push(n);}
     });
-    if (atual) cenarios.push(atual);
-
-    const startId = addNode('Início', 'start', cx, y, w);
-    let prevId = startId;
-    y += h + gap;
-
-    preEtapas.forEach(e => {
-      const nId = addNode(e, 'action', cx, y, w);
-      addEdge(prevId, nId, '');
-      prevId = nId;
-      y += h + gap;
-    });
-
-    const decId = addNode('Qual o cenário?', 'decision', cx, y, w);
-    addEdge(prevId, decId, '');
-    y += h + gap;
-
-    const colW = 220;
-    const totalW = cenarios.length * (colW + 30);
-    let startX = cx - totalW / 2 + 15;
-
-    cenarios.forEach((c, ci) => {
-      const colX = startX + ci * (colW + 30);
-      let cy = y;
-      const hId = addNode(c.titulo, 'decision', colX, cy, colW);
-      addEdge(decId, hId, c.titulo.substring(0, 20));
-      cy += h + gap;
-      let prev = hId;
-      c.passos.forEach(p => {
-        const isD = /\bse\b|verificar|confirmar/i.test(p);
-        const nId = addNode(p, isD ? 'decision' : 'action', colX, cy, colW);
-        addEdge(prev, nId, '');
-        prev = nId;
-        cy += h + gap;
-      });
-      const endId = addNode('Fim', 'end', colX, cy, colW);
-      addEdge(prev, endId, '');
+    if(atual)cenarios.push(atual);
+    const sId=addNode('Início','start',cx,y,w);let prev=sId;y+=h+gap;
+    pre.forEach(n=>{const nId=addNode(n.text,n.type,cx,y,w);addEdge(prev,nId,'');prev=nId;y+=h+gap;});
+    const decId=addNode('Qual o cenário?','decision',cx,y,w);addEdge(prev,decId,'');y+=h+gap;
+    const totalW=cenarios.length*(w+40);
+    let sx=cx-totalW/2+20;
+    cenarios.forEach(c=>{
+      let cy=y;
+      const hId=addNode(c.node.text,'decision',sx,cy,w);addEdge(decId,hId,c.node.text.substring(0,15));cy+=h+gap;let cprev=hId;
+      c.passos.forEach(p=>{const pId=addNode(p.text,p.type,sx,cy,w);addEdge(cprev,pId,'');cprev=pId;cy+=h+gap;});
+      const eId=addNode('Fim','end',sx,cy,w);addEdge(cprev,eId,'');sx+=w+40;
     });
   }
 
   xml += '</root></mxGraphModel>';
-  const encoded = encodeURIComponent(xml);
-  const url = `https://app.diagrams.net/?src=about&xml=${encoded}`;
-  window.open(url, '_blank');
+  const b64 = btoa(unescape(encodeURIComponent(xml)));
+  window.open(`https://app.diagrams.net/?splash=0#R${encodeURIComponent(xml)}`, '_blank');
 }
 
 // ── COPY ──
@@ -1216,6 +1294,8 @@ async function salvarDrive() {
     const data = await resp.json();
     if (data.success) {
       btn.innerHTML = '<i class="ti ti-check"></i> Salvo no Drive!';
+      const idx = history.findIndex(r => r.id === currentRecord.id);
+      if (idx !== -1) { addAuditEntry(history[idx], 'Salvo no Google Drive'); currentRecord = history[idx]; saveHistory(); renderAuditLog(currentRecord); }
       setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
     } else {
       btn.innerHTML = 'Erro — verifique a URL';
@@ -1296,6 +1376,65 @@ function showView(v) {
 }
 
 // ── HISTORY ──
+// ── USUÁRIO ──
+function getUsuario() {
+  try { return JSON.parse(localStorage.getItem('cellfy_user_cfg') || '{}').nome || 'Não identificado'; } catch(e) { return 'Não identificado'; }
+}
+function salvarUsuario() {
+  const nome = document.getElementById('cfg-usuario').value.trim();
+  localStorage.setItem('cellfy_user_cfg', JSON.stringify({ nome }));
+  const st = document.getElementById('usuario-status');
+  st.className = nome ? 'notion-status ok' : 'notion-status';
+  st.textContent = nome ? `✓ Olá, ${nome}! Seu nome será registrado nas edições.` : '';
+}
+function loadUsuario() {
+  try {
+    const cfg = JSON.parse(localStorage.getItem('cellfy_user_cfg') || '{}');
+    if (cfg.nome) { document.getElementById('cfg-usuario').value = cfg.nome; salvarUsuario(); }
+  } catch(e) {}
+}
+
+// ── AUDIT LOG ──
+function addAuditEntry(record, acao) {
+  if (!record.audit) record.audit = [];
+  record.audit.push({
+    ts: new Date().toISOString(),
+    data: new Date().toLocaleDateString('pt-BR'),
+    hora: new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}),
+    autor: getUsuario(),
+    acao,
+    versao: record.versao
+  });
+}
+
+function renderAuditLog(rec) {
+  const el = document.getElementById('audit-list');
+  if (!el) return;
+  const audit = rec.audit || [];
+  if (!audit.length) {
+    el.innerHTML = '<p style="font-size:12px;color:var(--text3);">Nenhuma alteração registrada ainda.</p>';
+    return;
+  }
+  el.innerHTML = [...audit].reverse().map(a => {
+    const dotCls = a.acao.includes('Drive') ? 'drive' : a.acao.includes('editado') ? 'edit' : '';
+    return `<div class="audit-item">
+      <div class="audit-dot ${dotCls}"></div>
+      <div class="audit-content">
+        <div class="audit-action">${a.acao}</div>
+        <div class="audit-meta">${a.data} às ${a.hora} · <strong>${a.autor}</strong> · v${a.versao}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function excluirPOP(id) {
+  if (!confirm('Excluir este POP do histórico?')) return;
+  history = history.filter(r => r.id !== id);
+  saveHistory();
+  if (currentRecord && currentRecord.id === id) showView('history');
+  else renderHistoryPage();
+}
+
 function saveHistory() {
   try { localStorage.setItem('cellfy_pops_v3', JSON.stringify(history)); } catch(e) {}
   renderSidebar();
@@ -1305,9 +1444,12 @@ function renderSidebar() {
   const el = document.getElementById('sb-history-list');
   if (!history.length) { el.innerHTML = '<p class="hist-empty">Nenhum POP gerado ainda</p>'; return; }
   el.innerHTML = history.slice(0,10).map(r => `
-    <div class="hist-card" onclick='showResult(${JSON.stringify(r).replace(/'/g,"\\'")})'> 
-      <div class="hist-card-name">${r.nome}</div>
-      <div class="hist-card-meta">${r.area} · v${r.versao} · ${r.data}</div>
+    <div class="hist-card" style="position:relative;cursor:default;">
+      <div onclick='showResult(${JSON.stringify(r).replace(/'/g,"\\'")})'  style="cursor:pointer;">
+        <div class="hist-card-name">${r.nome}</div>
+        <div class="hist-card-meta">${r.area} · v${r.versao} · ${r.data}</div>
+      </div>
+      <button onclick="excluirPOP(${r.id})" title="Excluir" style="position:absolute;top:6px;right:4px;background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash"></i></button>
     </div>`).join('');
 }
 
@@ -1326,6 +1468,7 @@ function renderHistoryPage() {
         <span style="font-size:11px;color:var(--text3);">${r.data}</span>
         <span style="font-size:11px;color:var(--text3);">·</span>
         <span style="font-size:11px;color:var(--text3);">${r.etapas?.length||0} etapas</span>
+        <button onclick="event.stopPropagation();excluirPOP(${r.id})" style="margin-left:auto;background:none;border:1px solid rgba(255,92,106,.3);border-radius:6px;padding:3px 8px;cursor:pointer;color:var(--danger);font-size:11px;font-family:inherit;"><i class="ti ti-trash"></i> Excluir</button>
       </div>
     </div>`).join('');
 }
