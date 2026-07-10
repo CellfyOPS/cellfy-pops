@@ -571,6 +571,7 @@ textarea{resize:vertical;min-height:72px;}
       <div class="tabs-bar">
         <button class="tab-btn active" id="rtab-doc" onclick="switchResult('doc')"><i class="ti ti-file-text"></i> Documento</button>
         <button class="tab-btn" id="rtab-flow" onclick="switchResult('flow')"><i class="ti ti-sitemap"></i> Fluxograma</button>
+        <button class="tab-btn" id="rtab-audit" onclick="switchResult('audit')"><i class="ti ti-timeline"></i> Histórico de edições</button>
       </div>
       <div class="scroll-area">
         <div id="rpane-doc"><pre class="pop-doc" id="pop-output"></pre></div>
@@ -1054,8 +1055,10 @@ function showResultById(id) {
 
 function switchResult(tab) {
   ['doc','flow','audit'].forEach(t => {
-    document.getElementById('rpane-' + t).style.display = t === tab ? 'block' : 'none';
-    document.getElementById('rtab-' + t).classList.toggle('active', t === tab);
+    const pane = document.getElementById('rpane-' + t);
+    const btn  = document.getElementById('rtab-' + t);
+    if (pane) pane.style.display = t === tab ? 'block' : 'none';
+    if (btn)  btn.classList.toggle('active', t === tab);
   });
 }
 
