@@ -1373,11 +1373,13 @@ async function salvarDrive() {
 
 function loadDriveConfig() {
   try {
-    const cfg = JSON.parse(localStorage.getItem('cellfy_drive_cfg') || '{}');
+    const DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbyvMKVcpJSYOgdcJXwXQ3Lmn5ZktggSjll1PKy0t7cyI8SNM9-QR3bCFu_mqyb89qjS/exec';
+    const saved = JSON.parse(localStorage.getItem('cellfy_drive_cfg') || '{}');
+    const cfg = { url: saved.url || DEFAULT_URL };
     const el = document.getElementById('cfg-drive-url');
-    if (el && cfg.url) el.value = cfg.url;
+    if (el) el.value = cfg.url;
     return cfg;
-  } catch(e) { return {}; }
+  } catch(e) { return { url: 'https://script.google.com/macros/s/AKfycbyvMKVcpJSYOgdcJXwXQ3Lmn5ZktggSjll1PKy0t7cyI8SNM9-QR3bCFu_mqyb89qjS/exec' }; }
 }
 function salvarConfigDrive() {
   const cfg = { url: document.getElementById('cfg-drive-url').value.trim() };
