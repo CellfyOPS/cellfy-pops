@@ -1313,9 +1313,12 @@ async function salvarDriveAuto(record) {
     const resp = await fetch(cfg.url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      redirect: 'follow'
     });
-    const data = await resp.json();
+    const text = await resp.text();
+    let data = {};
+    try { data = JSON.parse(text); } catch(e) { data = { success: false, error: text }; }
     if (data.success) {
       const idx = history.findIndex(r => r.id === record.id);
       if (idx !== -1) {
@@ -1327,7 +1330,8 @@ async function salvarDriveAuto(record) {
       }
       if (btn) { btn.innerHTML = '<i class="ti ti-check"></i> Salvo!'; setTimeout(() => { btn.innerHTML = '<i class="ti ti-brand-google-drive"></i> Salvar no Drive'; btn.disabled = false; }, 3000); }
     } else {
-      if (btn) { btn.innerHTML = 'Erro'; btn.disabled = false; }
+      console.error('Drive save error:', data.error);
+      if (btn) { btn.innerHTML = 'Erro — veja o console'; btn.disabled = false; }
     }
   } catch(e) {
     if (btn) { btn.innerHTML = 'Erro de conexão'; btn.disabled = false; }
@@ -1353,16 +1357,19 @@ async function salvarDrive() {
     const resp = await fetch(cfg.url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      redirect: 'follow'
     });
-    const data = await resp.json();
+    const text = await resp.text();
+    let data = {};
+    try { data = JSON.parse(text); } catch(e) { data = { success: false }; }
     if (data.success) {
       btn.innerHTML = '<i class="ti ti-check"></i> Salvo no Drive!';
       const idx = history.findIndex(r => r.id === currentRecord.id);
       if (idx !== -1) { addAuditEntry(history[idx], 'Salvo no Google Drive'); currentRecord = history[idx]; saveHistory(); renderAuditLog(currentRecord); }
       setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
     } else {
-      btn.innerHTML = 'Erro — verifique a URL';
+      btn.innerHTML = 'Erro — verifique o console';
       setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
     }
   } catch(e) {
@@ -1373,9 +1380,11 @@ async function salvarDrive() {
 
 function loadDriveConfig() {
   try {
-    const DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbyvMKVcpJSYOgdcJXwXQ3Lmn5ZktggSjll1PKy0t7cyI8SNM9-QR3bCFu_mqyb89qjS/exec';
-    const saved = JSON.parse(localStorage.getItem('cellfy_drive_cfg') || '{}');
-    const cfg = { url: saved.url || DEFAULT_URL };
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyvMKVcpJSYOgdcJXwXQ3Lmn5ZktggSjll1PKy0t7cyI8SNM9-QR3bCFu_mqyb89qjS/exec';
+    // Always force the correct Apps Script URL, ignore any old saved URL
+    const cfg = { url: SCRIPT_URL };
+    // Update localStorage to correct value
+    localStorage.setItem('cellfy_drive_cfg', JSON.stringify(cfg));
     const el = document.getElementById('cfg-drive-url');
     if (el) el.value = cfg.url;
     return cfg;
@@ -1501,7 +1510,7 @@ async function buscarPOPs(query) {
   if (cfg.url) {
     el.innerHTML = '<div class="loading-bar"><div class="loading-spin"></div> Buscando...</div>';
     try {
-      const resp = await fetch(`${cfg.url}?acao=buscar&q=${encodeURIComponent(q)}`);
+      const resp = await fetch(`${cfg.url}?acao=buscar&q=${encodeURIComponent(q)}`, { redirect: 'follow' });
       const data = await resp.json();
       const pops = data.pops || [];
       history = mergeHistory(pops, history);
@@ -1541,7 +1550,7 @@ async function renderSidebar() {
   }
   el.innerHTML = '<div class="loading-bar"><div class="loading-spin"></div> Carregando POPs...</div>';
   try {
-    const resp = await fetch(cfg.url + '?acao=listar');
+    const resp = await fetch(cfg.url + '?acao=listar', { redirect: 'follow' });
     const data = await resp.json();
     const pops = data.pops || [];
     if (!pops.length) { el.innerHTML = '<p class="hist-empty">Nenhum POP gerado ainda</p>'; return; }
