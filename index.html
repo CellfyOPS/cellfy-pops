@@ -171,6 +171,9 @@ textarea{resize:vertical;min-height:72px;}
       <i class="ti ti-settings"></i> Configurações
     </button>
     <div class="sb-section-label">Recentes</div>
+    <div style="padding:8px 8px 4px;">
+      <input type="text" id="sb-search" placeholder="🔍 Buscar POP..." oninput="buscarPOPs(this.value)" style="font-size:12px;padding:6px 10px;border-radius:8px;width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);" />
+    </div>
     <div class="sb-history" id="sb-history-list"></div>
   </div>
 
@@ -544,6 +547,9 @@ textarea{resize:vertical;min-height:72px;}
         </div>
         <button class="btn-ghost" onclick="showView('form')"><i class="ti ti-plus"></i> Novo POP</button>
       </div>
+      <div style="padding:12px 24px 0;border-bottom:1px solid var(--border);background:var(--surface);">
+        <input type="text" id="hist-search" placeholder="🔍 Buscar por título, setor, área..." oninput="renderHistoryPage(this.value)" style="font-family:inherit;font-size:13px;padding:8px 12px;border-radius:8px;width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);outline:none;margin-bottom:12px;" />
+      </div>
       <div class="scroll-area" id="history-scroll"></div>
     </div>
 
@@ -702,7 +708,7 @@ function init() {
   loadConfig();
   loadDriveConfig();
   loadUsuario();
-  renderSidebar();
+  renderSidebar(); // async — loads from Sheets if configured
 }
 
 function initSteps() { steps = ['', '', '']; renderSteps(); }
@@ -1006,7 +1012,13 @@ Documento gerado em ${hoje} — Cellfy Central de POPs`;
   history.unshift(record);
   saveHistory();
   currentRecord = record;
-  showResult(record);
+  // Auto-save to Drive/Sheets if configured
+  const driveCfgNow = loadDriveConfig();
+  if (driveCfgNow.url) {
+    salvarDriveAuto(record);
+  } else {
+    showResult(record);
+  }
 }
 
 // ── SHOW RESULT ──
@@ -1028,6 +1040,11 @@ function showResult(rec) {
   renderFlowchart(rec.etapas || []);
   switchResult('doc');
   showView('result');
+}
+
+function showResultById(id) {
+  const rec = history.find(r => r.id === id);
+  if (rec) showResult(rec);
 }
 
 function switchResult(tab) {
@@ -1276,7 +1293,48 @@ function copyResult() {
 }
 
 // ── NOTION SAVE ──
-// ── GOOGLE DRIVE SAVE ──
+// ── AUTO SAVE TO SHEETS + DRIVE ──
+async function salvarDriveAuto(record) {
+  showResult(record);
+  const cfg = loadDriveConfig();
+  if (!cfg.url) return;
+  const btn = document.getElementById('drive-save-btn');
+  if (btn) { btn.innerHTML = '<div class="loading-spin" style="border-color:rgba(255,255,255,.2);border-top-color:#fff;"></div> Salvando...'; btn.disabled = true; }
+  try {
+    const payload = {
+      ...record.formData,
+      nome: record.nome,
+      versao: record.versao,
+      pop: record.pop,
+      etapas: record.etapas,
+      _autor: getUsuario(),
+      _audit: record.audit || []
+    };
+    const resp = await fetch(cfg.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (data.success) {
+      const idx = history.findIndex(r => r.id === record.id);
+      if (idx !== -1) {
+        history[idx].driveUrl = data.url;
+        addAuditEntry(history[idx], 'Salvo no Drive e Sheets');
+        currentRecord = history[idx];
+        saveHistory();
+        renderAuditLog(currentRecord);
+      }
+      if (btn) { btn.innerHTML = '<i class="ti ti-check"></i> Salvo!'; setTimeout(() => { btn.innerHTML = '<i class="ti ti-brand-google-drive"></i> Salvar no Drive'; btn.disabled = false; }, 3000); }
+    } else {
+      if (btn) { btn.innerHTML = 'Erro'; btn.disabled = false; }
+    }
+  } catch(e) {
+    if (btn) { btn.innerHTML = 'Erro de conexão'; btn.disabled = false; }
+  }
+}
+
+// ── GOOGLE DRIVE SAVE (manual button) ──
 async function salvarDrive() {
   const cfg = loadDriveConfig();
   if (!cfg.url || !currentRecord) return;
@@ -1285,7 +1343,13 @@ async function salvarDrive() {
   btn.innerHTML = 'Salvando...';
   btn.disabled = true;
   try {
-    const payload = { ...currentRecord.formData, nome: currentRecord.nome, versao: currentRecord.versao };
+    const payload = {
+      ...currentRecord.formData,
+      nome: currentRecord.nome,
+      versao: currentRecord.versao,
+      _autor: getUsuario(),
+      _audit: currentRecord.audit || []
+    };
     const resp = await fetch(cfg.url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1427,6 +1491,30 @@ function renderAuditLog(rec) {
   }).join('');
 }
 
+async function buscarPOPs(query) {
+  const el = document.getElementById('sb-history-list');
+  const q = (query || '').toLowerCase().trim();
+  if (!q) { renderSidebar(); return; }
+  const cfg = loadDriveConfig();
+  if (cfg.url) {
+    el.innerHTML = '<div class="loading-bar"><div class="loading-spin"></div> Buscando...</div>';
+    try {
+      const resp = await fetch(`${cfg.url}?acao=buscar&q=${encodeURIComponent(q)}`);
+      const data = await resp.json();
+      const pops = data.pops || [];
+      history = mergeHistory(pops, history);
+      saveHistory();
+    } catch(e) {}
+  }
+  const filtered = history.filter(r =>
+    r.nome?.toLowerCase().includes(q) ||
+    r.area?.toLowerCase().includes(q) ||
+    r.versao?.toLowerCase().includes(q)
+  );
+  if (!filtered.length) { el.innerHTML = '<p class="hist-empty">Nenhum resultado encontrado</p>'; return; }
+  renderSidebarLocal(filtered.slice(0,10), el);
+}
+
 function excluirPOP(id) {
   if (!confirm('Excluir este POP do histórico?')) return;
   history = history.filter(r => r.id !== id);
@@ -1440,12 +1528,34 @@ function saveHistory() {
   renderSidebar();
 }
 
-function renderSidebar() {
+async function renderSidebar() {
   const el = document.getElementById('sb-history-list');
-  if (!history.length) { el.innerHTML = '<p class="hist-empty">Nenhum POP gerado ainda</p>'; return; }
-  el.innerHTML = history.slice(0,10).map(r => `
+  const cfg = loadDriveConfig();
+  if (!cfg.url) {
+    // fallback to localStorage
+    if (!history.length) { el.innerHTML = '<p class="hist-empty">Configure o Google Drive nas Configurações para sincronizar com a equipe.</p>'; return; }
+    renderSidebarLocal(history.slice(0,10), el);
+    return;
+  }
+  el.innerHTML = '<div class="loading-bar"><div class="loading-spin"></div> Carregando POPs...</div>';
+  try {
+    const resp = await fetch(cfg.url + '?acao=listar');
+    const data = await resp.json();
+    const pops = data.pops || [];
+    if (!pops.length) { el.innerHTML = '<p class="hist-empty">Nenhum POP gerado ainda</p>'; return; }
+    // Merge with localStorage
+    history = mergeHistory(pops, history);
+    renderSidebarLocal(history.slice(0,10), el);
+  } catch(e) {
+    renderSidebarLocal(history.slice(0,10), el);
+  }
+}
+
+function renderSidebarLocal(items, el) {
+  if (!items.length) { el.innerHTML = '<p class="hist-empty">Nenhum POP gerado ainda</p>'; return; }
+  el.innerHTML = items.map(r => `
     <div class="hist-card" style="position:relative;cursor:default;">
-      <div onclick='showResult(${JSON.stringify(r).replace(/'/g,"\\'")})'  style="cursor:pointer;">
+      <div onclick="showResultById(${r.id})" style="cursor:pointer;">
         <div class="hist-card-name">${r.nome}</div>
         <div class="hist-card-meta">${r.area} · v${r.versao} · ${r.data}</div>
       </div>
@@ -1453,11 +1563,42 @@ function renderSidebar() {
     </div>`).join('');
 }
 
-function renderHistoryPage() {
+function mergeHistory(fromSheets, fromLocal) {
+  const ids = new Set(fromSheets.map(r => String(r.id)));
+  const localOnly = fromLocal.filter(r => !ids.has(String(r.id)));
+  return [...fromSheets, ...localOnly];
+}
+
+async function renderHistoryPage(query) {
   const el = document.getElementById('history-scroll');
-  if (!history.length) { el.innerHTML = '<p style="font-size:13px;color:var(--text3);padding:48px 0;text-align:center;">Nenhum POP gerado ainda.</p>'; return; }
-  el.innerHTML = history.map(r => `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:10px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='rgba(0,212,240,.3)'" onmouseout="this.style.borderColor='var(--border)'" onclick='showResult(${JSON.stringify(r).replace(/'/g,"\\'")})'>
+  const q = (query || '').toLowerCase().trim();
+  const cfg = loadDriveConfig();
+
+  if (cfg.url) {
+    el.innerHTML = '<div class="loading-bar"><div class="loading-spin"></div> Buscando POPs...</div>';
+    try {
+      const url = q ? `${cfg.url}?acao=buscar&q=${encodeURIComponent(q)}` : `${cfg.url}?acao=listar`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      const pops = data.pops || [];
+      history = mergeHistory(pops, history);
+      saveHistory();
+    } catch(e) { /* usa local */ }
+  }
+
+  const filtered = q ? history.filter(r =>
+    r.nome?.toLowerCase().includes(q) ||
+    r.area?.toLowerCase().includes(q) ||
+    r.pop?.toLowerCase().includes(q) ||
+    r.versao?.toLowerCase().includes(q)
+  ) : history;
+
+  if (!filtered.length) {
+    el.innerHTML = `<p style="font-size:13px;color:var(--text3);padding:48px 0;text-align:center;">${q ? 'Nenhum resultado para "'+q+'"' : 'Nenhum POP gerado ainda.'}</p>`;
+    return;
+  }
+  el.innerHTML = filtered.map(r => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:10px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='rgba(0,212,240,.3)'" onmouseout="this.style.borderColor='var(--border)'" onclick="showResultById(${r.id})">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">
         <span style="font-size:14px;font-weight:500;color:var(--text);flex:1;">${r.nome}</span>
         <span class="badge ${r.tipo==='novo'?'badge-new':'badge-update'}">${r.tipo==='novo'?'Novo':'Atualização'}</span>
