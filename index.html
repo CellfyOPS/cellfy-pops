@@ -1024,19 +1024,24 @@ Documento gerado em ${hoje} — Cellfy Central de POPs`;
 // ── SHOW RESULT ──
 function showResult(rec) {
   currentRecord = rec;
-  document.getElementById('r-title').textContent = rec.nome;
+  const titleEl = document.getElementById('r-title');
+  if (titleEl) titleEl.textContent = rec.nome;
   const notionCfg = loadConfig();
-  document.getElementById('notion-save-btn').style.display = notionCfg.token && notionCfg.db ? 'flex' : 'none';
+  const notionBtn = document.getElementById('notion-save-btn');
+  if (notionBtn) notionBtn.style.display = notionCfg.token && notionCfg.db ? 'flex' : 'none';
   const driveCfg = loadDriveConfig();
-  document.getElementById('drive-save-btn').style.display = driveCfg.url ? 'flex' : 'none';
-  document.getElementById('r-meta').innerHTML = `
+  const driveBtn = document.getElementById('drive-save-btn');
+  if (driveBtn) driveBtn.style.display = driveCfg.url ? 'flex' : 'none';
+  const metaEl = document.getElementById('r-meta');
+  if (metaEl) metaEl.innerHTML = `
     <span class="badge ${rec.tipo==='novo'?'badge-new':'badge-update'}">${rec.tipo==='novo'?'Novo':'Atualização'}</span>
     <span class="badge badge-sector">${rec.area}</span>
     <span class="badge badge-sector">v${rec.versao}</span>
     <span class="badge badge-sector">${rec.data}</span>
     <span class="badge badge-status-${rec.status||'ativo'}">${rec.status||'ativo'}</span>`;
   renderAuditLog(rec);
-  document.getElementById('pop-output').textContent = rec.pop;
+  const popEl = document.getElementById('pop-output');
+  if (popEl) popEl.textContent = rec.pop;
   renderFlowchart(rec.etapas || []);
   switchResult('doc');
   showView('result');
@@ -1296,6 +1301,7 @@ function copyResult() {
 // ── AUTO SAVE TO SHEETS + DRIVE ──
 async function salvarDriveAuto(record) {
   showResult(record);
+  await new Promise(r => setTimeout(r, 150));
   const cfg = loadDriveConfig();
   if (!cfg.url) return;
   const btn = document.getElementById('drive-save-btn');
@@ -1484,7 +1490,7 @@ function addAuditEntry(record, acao) {
 
 function renderAuditLog(rec) {
   const el = document.getElementById('audit-list');
-  if (!el) return;
+  if (!el || !rec) return;
   const audit = rec.audit || [];
   if (!audit.length) {
     el.innerHTML = '<p style="font-size:12px;color:var(--text3);">Nenhuma alteração registrada ainda.</p>';
