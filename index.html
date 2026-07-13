@@ -635,6 +635,22 @@ textarea{resize:vertical;min-height:72px;}
         </div>
       </div>
       <div class="scroll-area" style="max-width:560px;">
+        <div class="notion-panel" style="border-color:rgba(245,166,35,.25);background:rgba(245,166,35,.04);margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <i class="ti ti-user" style="font-size:20px;color:var(--warn);"></i>
+            <span style="font-size:14px;font-weight:500;color:var(--text);">Identificação do usuário</span>
+          </div>
+          <div class="info-box" style="background:rgba(245,166,35,.06);border-color:rgba(245,166,35,.2);">
+            <i class="ti ti-info-circle" style="color:var(--warn);"></i>
+            <p>Preencha uma vez neste dispositivo. Seu nome será registrado automaticamente em toda criação ou edição de POP.</p>
+          </div>
+          <div class="fg" style="margin-bottom:6px;">
+            <label style="color:var(--warn);">Meu nome</label>
+            <input type="text" id="cfg-usuario" placeholder="Ex: Rafa, Roseane, Larissa..." oninput="salvarUsuario()" />
+          </div>
+          <div id="usuario-status" class="notion-status"></div>
+        </div>
+
         <div class="notion-panel">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
             <i class="ti ti-brand-notion" style="font-size:20px;color:var(--cyan);"></i>
