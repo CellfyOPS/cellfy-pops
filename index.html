@@ -575,46 +575,92 @@ textarea{resize:vertical;min-height:72px;}
       </div>
       <div class="scroll-area">
         <div id="rpane-doc"><pre class="pop-doc" id="pop-output"></pre></div>
-        <div id="rpane-flow" style="display:none;">
-          <!-- TOOLBAR -->
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-            <span style="font-size:12px;color:var(--text2);">Clique em qualquer nó para editar</span>
-            <div style="margin-left:auto;display:flex;gap:8px;">
-              <button class="btn-ghost" onclick="flowAddNode()" style="font-size:12px;padding:6px 12px;"><i class="ti ti-plus"></i> Adicionar etapa</button>
-              <button class="btn-ghost" onclick="abrirDrawio()" style="border-color:rgba(0,212,240,.3);color:var(--cyan);font-size:12px;padding:6px 12px;"><i class="ti ti-external-link"></i> Abrir no draw.io</button>
-              <button class="btn-ghost" onclick="flowSalvar()" style="border-color:rgba(0,196,140,.3);color:var(--success);font-size:12px;padding:6px 12px;"><i class="ti ti-device-floppy"></i> Salvar edição</button>
+        <div id="rpane-flow" style="display:none;flex-direction:column;height:calc(100vh - 160px);">
+          <!-- FLOW TOOLBAR -->
+          <div style="display:flex;align-items:center;gap:6px;padding:10px 0 12px;flex-wrap:wrap;">
+            <span style="font-size:11px;color:var(--text3);">Adicionar:</span>
+            <button class="flow-palette-btn pn-acao" onclick="flowAddTyped('acao')">▶ Ação</button>
+            <button class="flow-palette-btn pn-se" onclick="flowAddTyped('se')">⬦ SE:</button>
+            <button class="flow-palette-btn pn-ramo" onclick="flowAddTyped('ramo')">⊕ RAMO:</button>
+            <button class="flow-palette-btn pn-cenario" onclick="flowAddTyped('cenario')">◈ CENÁRIO:</button>
+            <div style="width:1px;height:20px;background:var(--border2);margin:0 2px;"></div>
+            <button class="btn-ghost" id="btn-flow-connect" onclick="toggleFlowConnect()" style="font-size:11px;padding:5px 10px;"><i class="ti ti-vector-bezier"></i> Conectar</button>
+            <button class="btn-ghost" onclick="flowAutoLayout()" style="font-size:11px;padding:5px 10px;"><i class="ti ti-layout-distribute-vertical"></i> Organizar</button>
+            <button class="btn-ghost" onclick="flowFitView()" style="font-size:11px;padding:5px 10px;"><i class="ti ti-frame"></i> Ajustar</button>
+            <div style="margin-left:auto;display:flex;gap:6px;">
+              <button class="btn-ghost" onclick="flowUndo()" style="font-size:11px;padding:5px 10px;" title="Ctrl+Z"><i class="ti ti-arrow-back-up"></i></button>
+              <button class="btn-ghost" onclick="abrirDrawio()" style="font-size:11px;padding:5px 10px;border-color:rgba(0,212,240,.3);color:var(--cyan);"><i class="ti ti-external-link"></i> draw.io</button>
+              <button class="btn-ghost" onclick="flowSalvar()" style="font-size:11px;padding:5px 10px;border-color:rgba(0,196,140,.3);color:var(--success);"><i class="ti ti-device-floppy"></i> Salvar</button>
             </div>
           </div>
-          <!-- EDITOR MODAL -->
-          <div id="flow-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center;">
-            <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:24px;width:440px;max-width:90vw;">
-              <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:16px;">Editar etapa</div>
-              <div class="fg" style="margin-bottom:12px;">
-                <label>Texto da etapa</label>
-                <textarea id="flow-edit-text" style="min-height:80px;"></textarea>
-              </div>
-              <div class="fg" style="margin-bottom:16px;">
+          <!-- FLOW CANVAS -->
+          <div style="flex:1;position:relative;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg);" id="flow-canvas-wrap">
+            <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;"></div>
+            <svg id="flow-svg" style="position:absolute;inset:0;width:100%;height:100%;cursor:default;" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="fa-def" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M1 1L9 5L1 9" fill="none" stroke="#8888a8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </marker>
+                <marker id="fa-sim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M1 1L9 5L1 9" fill="none" stroke="#00c48c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </marker>
+                <marker id="fa-nao" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M1 1L9 5L1 9" fill="none" stroke="#ff5c6a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </marker>
+                <marker id="fa-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M1 1L9 5L1 9" fill="none" stroke="#00d4f0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </marker>
+                <marker id="fa-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M1 1L9 5L1 9" fill="none" stroke="#7c3fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </marker>
+              </defs>
+              <g id="fc-root" transform="translate(0,0) scale(1)">
+                <g id="fc-edges"></g>
+                <g id="fc-nodes"></g>
+                <g id="fc-temp"></g>
+              </g>
+            </svg>
+            <!-- ZOOM controls -->
+            <div style="position:absolute;bottom:10px;right:10px;display:flex;flex-direction:column;gap:4px;z-index:5;">
+              <div onclick="fcZoom(1.2)" style="width:28px;height:28px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text2);" title="Zoom +">+</div>
+              <div onclick="fcZoom(0.8)" style="width:28px;height:28px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text2);" title="Zoom -">−</div>
+            </div>
+          </div>
+          <!-- NODE EDITOR PANEL -->
+          <div id="fc-editor-panel" style="display:none;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:14px;margin-top:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <span style="font-size:12px;font-weight:500;color:var(--text);" id="fc-panel-title">Editar nó</span>
+              <button class="btn-ghost" onclick="fcClosePanel()" style="padding:3px 7px;font-size:12px;"><i class="ti ti-x"></i></button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div class="fg">
                 <label>Tipo</label>
-                <select id="flow-edit-type">
-                  <option value="action">▶️ Ação</option>
-                  <option value="decision">🔷 Decisão / Cenário</option>
-                  <option value="exception">⚠️ Exceção / Escalada</option>
+                <select id="fc-sel-type" onchange="fcUpdateType()">
+                  <option value="start">🟢 Início</option>
+                  <option value="action">▶ Ação</option>
+                  <option value="decision">⬦ SE: / Decisão</option>
+                  <option value="ramo">⊕ RAMO:</option>
+                  <option value="cenario">◈ CENÁRIO:</option>
+                  <option value="exception">⚠ Exceção</option>
+                  <option value="end">🔴 Fim</option>
                 </select>
               </div>
-              <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button class="btn-ghost" onclick="flowEditClose()" style="font-size:12px;">Cancelar</button>
-                <button class="btn-ghost" onclick="flowEditMoveUp()" style="font-size:12px;"><i class="ti ti-arrow-up"></i></button>
-                <button class="btn-ghost" onclick="flowEditMoveDown()" style="font-size:12px;"><i class="ti ti-arrow-down"></i></button>
-                <button class="btn-ghost" onclick="flowEditDelete()" style="border-color:rgba(255,92,106,.3);color:var(--danger);font-size:12px;"><i class="ti ti-trash"></i> Excluir</button>
-                <button class="btn-grad" onclick="flowEditSave()" style="font-size:12px;">Salvar</button>
+              <div class="fg" id="fc-conn-label-wrap" style="display:none;">
+                <label>Rótulo da conexão</label>
+                <input type="text" id="fc-conn-label" placeholder="Sim, Não, Shopee..." oninput="fcUpdateConnLabel()"/>
+              </div>
+              <div class="fg" style="grid-column:1/-1;">
+                <label>Texto</label>
+                <textarea id="fc-sel-text" rows="2" oninput="fcUpdateText()" style="min-height:50px;"></textarea>
               </div>
             </div>
-          </div>
-          <!-- CANVAS -->
-          <div class="flowchart-wrap" style="overflow-x:auto;">
-            <div id="flow-nodes" style="min-width:640px;"></div>
+            <div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end;">
+              <button class="btn-ghost" onclick="fcDuplicate()" style="font-size:11px;padding:5px 10px;"><i class="ti ti-copy"></i> Duplicar</button>
+              <button class="btn-ghost" onclick="fcDelete()" style="font-size:11px;padding:5px 10px;border-color:rgba(255,92,106,.3);color:var(--danger);"><i class="ti ti-trash"></i> Excluir</button>
+            </div>
           </div>
         </div>
+
         <div id="rpane-audit" style="display:none;">
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;">
             <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
@@ -1073,166 +1119,509 @@ function switchResult(tab) {
   ['doc','flow','audit'].forEach(t => {
     const pane = document.getElementById('rpane-' + t);
     const btn  = document.getElementById('rtab-' + t);
-    if (pane) pane.style.display = t === tab ? 'block' : 'none';
+    if (pane) pane.style.display = t === tab ? (t === 'flow' ? 'flex' : 'block') : 'none';
     if (btn)  btn.classList.toggle('active', t === tab);
   });
+  if (tab === 'flow') {
+    setTimeout(() => { flowFitView(); fcApplyTransform(); }, 100);
+  }
 }
 
 // ── FLOWCHART ──
-// ── FLOWCHART STATE ──
-let flowNodes = []; // [{id, text, type}]
-let flowEditingId = null;
+// ── FLOWCHART CANVAS ENGINE ──
+const FC = {
+  nodes: [], edges: [], sel: null, selEdge: null,
+  dragging: null, dragOff: {x:0,y:0},
+  connecting: false, connectFrom: null,
+  pan: false, panStart: {x:0,y:0},
+  tx: 20, ty: 20, scale: 1,
+  nc: 0, ec: 0,
+  hist: [], histIdx: -1
+};
+
+const FC_CFG = {
+  start:     {label:'Início',   fill:'#003322', stroke:'#00c48c', tc:'#00c48c', shape:'pill'},
+  action:    {label:'Ação',     fill:'#18181f', stroke:'#555',    tc:'#eeeef5', shape:'rect'},
+  decision:  {label:'SE:',      fill:'#2a1f00', stroke:'#f5a623', tc:'#f5a623', shape:'diamond'},
+  ramo:      {label:'RAMO:',    fill:'#001a2a', stroke:'#00d4f0', tc:'#00d4f0', shape:'rect'},
+  cenario:   {label:'CENÁRIO:', fill:'#1a0028', stroke:'#7c3fff', tc:'#b09cff', shape:'rect'},
+  exception: {label:'Exceção',  fill:'#220011', stroke:'#ff5c6a', tc:'#ff8a94', shape:'rect'},
+  end:       {label:'Fim',      fill:'#220011', stroke:'#ff5c6a', tc:'#ff5c6a', shape:'pill'},
+};
+const NW = 180, NH = 48, DW = 160, DH = 56;
 
 function renderFlowchart(etapas) {
-  // Build flowNodes from etapas
-  flowNodes = etapas.map((e, i) => ({
-    id: i,
-    text: e,
-    type: /^(SE|QUANDO|CASO|CENÁRIO)\s*[-—]|cenário|cenario/i.test(e.trim()) ? 'decision'
-        : /escalar|urgente|sinistro/i.test(e) ? 'exception'
-        : 'action'
-  }));
-  renderFlowCanvas();
+  FC.nodes = []; FC.edges = []; FC.nc = 0; FC.ec = 0;
+  FC.sel = null; FC.selEdge = null;
+  if (!etapas || !etapas.length) { fcRender(); return; }
+
+  // Parse etapas into nodes
+  const start = fcMakeNode('start', 'Início', 300, 40);
+  const end   = fcMakeNode('end',   'Fim',    300, 999);
+  let lastId = start.id, yPos = 140;
+  const cenStack = [], ramoStack = [];
+
+  etapas.forEach(e => {
+    let type = 'action';
+    if (/^SE\s*:/i.test(e.trim()))       type = 'decision';
+    else if (/^RAMO\s*:/i.test(e.trim())) type = 'ramo';
+    else if (/^CENÁRIO\s*:/i.test(e.trim()) || /^CENARIO\s*:/i.test(e.trim())) type = 'cenario';
+    else if (/^(SE|QUANDO|CASO)\s*[-—]/i.test(e.trim())) type = 'decision';
+    else if (/escalar|urgente|sinistro/i.test(e)) type = 'exception';
+
+    const n = fcMakeNode(type, e, 300, yPos);
+    FC.edges.push({id:'e'+(++FC.ec), from:lastId, to:n.id, label:''});
+    lastId = n.id;
+    yPos += type === 'decision' ? 100 : 90;
+  });
+
+  end.y = yPos + 40;
+  FC.edges.push({id:'e'+(++FC.ec), from:lastId, to:end.id, label:''});
+
+  fcAutoLayout();
+  fcSaveHist();
+  fcInitEvents();
 }
 
-function renderFlowCanvas() {
-  const el = document.getElementById('flow-nodes');
-  const temCenarios = flowNodes.some(n => n.type === 'decision' && /cenário|cenario/i.test(n.text));
+function fcMakeNode(type, text, x, y) {
+  const n = { id:'n'+(++FC.nc), type, text, x, y,
+    w: type==='decision' ? DW : NW,
+    h: type==='decision' ? DH : NH };
+  FC.nodes.push(n);
+  return n;
+}
 
-  if (temCenarios) {
-    renderBranched(el);
-  } else {
-    renderLinear(el);
+function fcInitEvents() {
+  const svg = document.getElementById('flow-svg');
+  if (svg._fcInit) return;
+  svg._fcInit = true;
+  svg.addEventListener('mousedown', fcOnBgDown);
+  svg.addEventListener('mousemove', fcOnMove);
+  svg.addEventListener('mouseup',   fcOnUp);
+  svg.addEventListener('wheel',     fcOnWheel, {passive:false});
+  document.addEventListener('keydown', fcOnKey);
+}
+
+function fcOnBgDown(e) {
+  if (e.target === document.getElementById('flow-svg') || e.target.id === 'fc-root') {
+    FC.sel = null; FC.selEdge = null; fcClosePanel(); fcRender();
+    if (e.altKey || e.button === 1) {
+      FC.pan = true;
+      FC.panStart = {x: e.offsetX - FC.tx, y: e.offsetY - FC.ty};
+    }
   }
 }
 
-function renderLinear(el) {
-  let html = '<div style="display:flex;flex-direction:column;align-items:center;gap:0;">';
-  html += nodeHTML({id:-1, text:'Início', type:'start'}, false);
-  flowNodes.forEach(n => {
-    html += '<div class="flow-arrow">↓</div>';
-    html += nodeHTML(n, true);
-  });
-  html += '<div class="flow-arrow">↓</div>';
-  html += nodeHTML({id:-2, text:'Fim', type:'end'}, false);
-  html += '</div>';
-  el.innerHTML = html;
+function fcOnMove(e) {
+  const wrap = document.getElementById('flow-canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const mx = (e.clientX - rect.left - FC.tx) / FC.scale;
+  const my = (e.clientY - rect.top  - FC.ty) / FC.scale;
+
+  if (FC.pan) {
+    FC.tx = e.clientX - rect.left - FC.panStart.x;
+    FC.ty = e.clientY - rect.top  - FC.panStart.y;
+    fcApplyTransform(); return;
+  }
+  if (FC.dragging) {
+    const n = FC.nodes.find(x => x.id === FC.dragging);
+    if (n) { n.x = mx - FC.dragOff.x; n.y = my - FC.dragOff.y; fcRender(); } return;
+  }
+  if (FC.connectFrom) {
+    fcUpdateTempEdge(FC.connectFrom.px, FC.connectFrom.py, mx, my);
+  }
 }
 
-function renderBranched(el) {
-  const cenarios = [];
-  let atual = null;
-  const pre = [];
-  flowNodes.forEach(n => {
-    if (/cenário|cenario/i.test(n.text)) {
-      if (atual) cenarios.push(atual);
-      atual = { node: n, passos: [] };
-    } else if (atual) {
-      atual.passos.push(n);
+function fcOnUp(e) {
+  const wrap = document.getElementById('flow-canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const mx = (e.clientX - rect.left - FC.tx) / FC.scale;
+  const my = (e.clientY - rect.top  - FC.ty) / FC.scale;
+
+  if (FC.dragging) fcSaveHist();
+  FC.dragging = null; FC.pan = false;
+
+  if (FC.connectFrom) {
+    const target = FC.nodes.find(n =>
+      mx >= n.x && mx <= n.x + n.w && my >= n.y && my <= n.y + n.h
+    );
+    if (target && target.id !== FC.connectFrom.nodeId) {
+      FC.edges.push({id:'e'+(++FC.ec), from:FC.connectFrom.nodeId, to:target.id, label:''});
+      fcSaveHist(); fcRender();
+    }
+    FC.connectFrom = null;
+    document.getElementById('fc-temp').innerHTML = '';
+  }
+}
+
+function fcOnWheel(e) {
+  e.preventDefault();
+  fcZoom(e.deltaY > 0 ? 0.9 : 1.1, e.offsetX, e.offsetY);
+}
+
+function fcOnKey(e) {
+  const tag = document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if ((e.key === 'Delete' || e.key === 'Backspace') && document.getElementById('rpane-flow').style.display !== 'none') {
+    fcDelete();
+  }
+  if (e.ctrlKey && e.key === 'z') flowUndo();
+}
+
+function fcNodeMouseDown(e, id) {
+  e.stopPropagation();
+  if (FC.connecting) { fcStartConnect(id, e); return; }
+  FC.sel = id; FC.selEdge = null;
+  const n = FC.nodes.find(x => x.id === id);
+  const wrap = document.getElementById('flow-canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const mx = (e.clientX - rect.left - FC.tx) / FC.scale;
+  const my = (e.clientY - rect.top  - FC.ty) / FC.scale;
+  FC.dragging = id;
+  FC.dragOff = {x: mx - n.x, y: my - n.y};
+  fcOpenPanel(id);
+  fcRender();
+}
+
+function fcEdgeClick(e, id) {
+  e.stopPropagation();
+  FC.selEdge = id; FC.sel = null;
+  const ed = FC.edges.find(x => x.id === id);
+  fcOpenConnPanel(ed);
+  fcRender();
+}
+
+function fcStartConnect(nodeId, e) {
+  const n = FC.nodes.find(x => x.id === nodeId);
+  const wrap = document.getElementById('flow-canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const mx = (e.clientX - rect.left - FC.tx) / FC.scale;
+  const my = (e.clientY - rect.top  - FC.ty) / FC.scale;
+  FC.connectFrom = {nodeId, px: n.x + n.w/2, py: n.y + n.h};
+}
+
+function fcUpdateTempEdge(x1, y1, x2, y2) {
+  const layer = document.getElementById('fc-temp');
+  layer.innerHTML = `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#00d4f0" stroke-width="1.5" stroke-dasharray="5 3"/>`;
+}
+
+function fcGetConnPt(n, tx, ty) {
+  const cx = n.x + n.w/2, cy = n.y + n.h/2;
+  const dx = tx - cx, dy = ty - cy;
+  const hw = n.w/2, hh = n.h/2;
+  if (n.type === 'decision') {
+    const t = Math.min(hw/Math.max(Math.abs(dx),0.01), hh/Math.max(Math.abs(dy),0.01));
+    return {x: cx + dx*t*0.9, y: cy + dy*t*0.9};
+  }
+  if (Math.abs(dx)*hh > Math.abs(dy)*hw) {
+    return {x: cx+(dx>0?hw:-hw), y: cy+dy*hw/Math.max(Math.abs(dx),0.01)};
+  }
+  return {x: cx+dx*hh/Math.max(Math.abs(dy),0.01), y: cy+(dy>0?hh:-hh)};
+}
+
+function fcRender() {
+  fcRenderEdges();
+  fcRenderNodes();
+}
+
+function fcRenderNodes() {
+  const layer = document.getElementById('fc-nodes');
+  if (!layer) return;
+  layer.innerHTML = '';
+  FC.nodes.forEach(n => {
+    const cfg = FC_CFG[n.type] || FC_CFG.action;
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.style.cursor = FC.connecting ? 'crosshair' : 'move';
+    g.addEventListener('mousedown', e => fcNodeMouseDown(e, n.id));
+    g.addEventListener('dblclick', () => fcOpenPanel(n.id));
+
+    const isSel = FC.sel === n.id;
+    const sw = isSel ? 2 : 0.8;
+
+    if (n.type === 'decision') {
+      const hw = n.w/2, hh = n.h/2;
+      const poly = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      poly.setAttribute('points',`${n.x+hw},${n.y} ${n.x+n.w},${n.y+hh} ${n.x+hw},${n.y+n.h} ${n.x},${n.y+hh}`);
+      poly.setAttribute('fill',cfg.fill); poly.setAttribute('stroke',cfg.stroke);
+      poly.setAttribute('stroke-width', isSel?2:0.8);
+      g.appendChild(poly);
     } else {
-      pre.push(n);
+      const rx = (n.type==='start'||n.type==='end') ? n.h/2 : 8;
+      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('x',n.x); rect.setAttribute('y',n.y);
+      rect.setAttribute('width',n.w); rect.setAttribute('height',n.h);
+      rect.setAttribute('rx',rx);
+      rect.setAttribute('fill',cfg.fill); rect.setAttribute('stroke',cfg.stroke);
+      rect.setAttribute('stroke-width', isSel?2:0.8);
+      if (isSel) rect.setAttribute('filter','brightness(1.3)');
+      g.appendChild(rect);
+    }
+
+    // Badge
+    const badge = document.createElementNS('http://www.w3.org/2000/svg','text');
+    badge.setAttribute('x', n.x+n.w/2); badge.setAttribute('y', n.y+13);
+    badge.setAttribute('text-anchor','middle');
+    badge.setAttribute('fill',cfg.tc); badge.setAttribute('font-size','9');
+    badge.setAttribute('font-family',"'DM Sans',sans-serif");
+    badge.setAttribute('opacity','.7'); badge.textContent = cfg.label.toUpperCase();
+    g.appendChild(badge);
+
+    // Text
+    const max = Math.floor(n.w / 6.5);
+    const txt = n.text.length > max ? n.text.substring(0,max-2)+'…' : n.text;
+    const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+    label.setAttribute('x', n.x+n.w/2); label.setAttribute('y', n.y+n.h/2+6);
+    label.setAttribute('text-anchor','middle');
+    label.setAttribute('fill',cfg.tc); label.setAttribute('font-size','11');
+    label.setAttribute('font-weight','500');
+    label.setAttribute('font-family',"'DM Sans',sans-serif");
+    label.setAttribute('pointer-events','none');
+    label.textContent = txt;
+    g.appendChild(label);
+
+    // Port dots when in connect mode
+    if (FC.connecting) {
+      [[n.x+n.w/2,n.y],[n.x+n.w,n.y+n.h/2],[n.x+n.w/2,n.y+n.h],[n.x,n.y+n.h/2]].forEach(([px,py]) => {
+        const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        dot.setAttribute('cx',px); dot.setAttribute('cy',py); dot.setAttribute('r',4);
+        dot.setAttribute('fill','#00d4f0'); dot.setAttribute('stroke','#00d4f0');
+        dot.setAttribute('stroke-width','1'); dot.setAttribute('opacity','.7');
+        dot.style.cursor = 'crosshair';
+        dot.addEventListener('mousedown', e => { e.stopPropagation(); FC.connectFrom = {nodeId:n.id, px, py}; });
+        g.appendChild(dot);
+      });
+    }
+    layer.appendChild(g);
+  });
+}
+
+function fcRenderEdges() {
+  const layer = document.getElementById('fc-edges');
+  if (!layer) return;
+  layer.innerHTML = '';
+  FC.edges.forEach(ed => {
+    const from = FC.nodes.find(x => x.id === ed.from);
+    const to   = FC.nodes.find(x => x.id === ed.to);
+    if (!from || !to) return;
+    const tc = {x: to.x+to.w/2, y: to.y+to.h/2};
+    const fc2 = {x: from.x+from.w/2, y: from.y+from.h/2};
+    const fp = fcGetConnPt(from, tc.x, tc.y);
+    const tp = fcGetConnPt(to, fc2.x, fc2.y);
+    const dx = tp.x-fp.x, dy = tp.y-fp.y;
+    const d = `M${fp.x},${fp.y} C${fp.x},${fp.y+Math.abs(dy)*0.5} ${tp.x},${tp.y-Math.abs(dy)*0.5} ${tp.x},${tp.y}`;
+
+    const lbl = (ed.label||'').toLowerCase();
+    let stroke = '#8888a8', marker = 'fa-def';
+    if (lbl==='sim'){stroke='#00c48c';marker='fa-sim';}
+    else if(lbl==='não'||lbl==='nao'){stroke='#ff5c6a';marker='fa-nao';}
+    else if(from.type==='ramo'){stroke='#00d4f0';marker='fa-cyan';}
+    else if(from.type==='cenario'){stroke='#7c3fff';marker='fa-purple';}
+
+    const isSel = FC.selEdge === ed.id;
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', d); path.setAttribute('fill','none');
+    path.setAttribute('stroke', stroke); path.setAttribute('stroke-width', isSel?2.5:1.5);
+    path.setAttribute('marker-end',`url(#${marker})`);
+    if (isSel) path.setAttribute('stroke-dasharray','5 3');
+    path.style.cursor = 'pointer';
+    path.addEventListener('click', e => fcEdgeClick(e, ed.id));
+    layer.appendChild(path);
+
+    if (ed.label) {
+      const mx = (fp.x+tp.x)/2, my = (fp.y+tp.y)/2-10;
+      const bg = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      bg.setAttribute('x',mx-22); bg.setAttribute('y',my-10);
+      bg.setAttribute('width',44); bg.setAttribute('height',16);
+      bg.setAttribute('rx',4); bg.setAttribute('fill','#18181f');
+      layer.appendChild(bg);
+      const lt = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lt.setAttribute('x',mx); lt.setAttribute('y',my+2);
+      lt.setAttribute('text-anchor','middle'); lt.setAttribute('fill',stroke);
+      lt.setAttribute('font-size','10'); lt.setAttribute('font-family',"'DM Sans',sans-serif");
+      lt.style.cursor='pointer';
+      lt.addEventListener('click', e => fcEdgeClick(e, ed.id));
+      lt.textContent = ed.label;
+      layer.appendChild(lt);
     }
   });
-  if (atual) cenarios.push(atual);
+}
 
-  let html = '<div style="display:flex;flex-direction:column;align-items:center;gap:0;">';
-  html += nodeHTML({id:-1, text:'Início', type:'start'}, false);
-  pre.forEach(n => { html += '<div class="flow-arrow">↓</div>' + nodeHTML(n, true); });
+// ── PANEL ──
+function fcOpenPanel(id) {
+  const n = FC.nodes.find(x => x.id === id);
+  if (!n) return;
+  FC.sel = id;
+  const p = document.getElementById('fc-editor-panel');
+  p.style.display = 'block';
+  document.getElementById('fc-panel-title').textContent = 'Editar nó';
+  document.getElementById('fc-sel-type').value = n.type;
+  document.getElementById('fc-sel-text').value = n.text;
+  document.getElementById('fc-conn-label-wrap').style.display = 'none';
+}
 
-  if (cenarios.length) {
-    html += '<div class="flow-arrow">↓</div>';
-    html += '<div class="flow-node-box decision" style="font-size:12px;font-weight:600;cursor:default;">Qual o cenário?</div>';
-    html += '<div class="flow-arrow">↓</div>';
-    html += '<div style="display:flex;gap:16px;align-items:flex-start;justify-content:center;flex-wrap:wrap;width:100%;padding:0 8px;">';
-    cenarios.forEach(c => {
-      html += '<div style="display:flex;flex-direction:column;align-items:center;min-width:190px;max-width:230px;">';
-      html += nodeHTML(c.node, true, '100%');
-      c.passos.forEach(p => {
-        html += '<div class="flow-arrow">↓</div>' + nodeHTML(p, true, '100%');
-      });
-      html += '<div class="flow-arrow">↓</div>';
-      html += '<div class="flow-node-box end" style="font-size:11px;width:100%;">Fim</div>';
-      html += '</div>';
-    });
-    html += '</div>';
+function fcOpenConnPanel(ed) {
+  if (!ed) return;
+  const p = document.getElementById('fc-editor-panel');
+  p.style.display = 'block';
+  document.getElementById('fc-panel-title').textContent = 'Editar conexão';
+  document.getElementById('fc-conn-label-wrap').style.display = 'flex';
+  document.getElementById('fc-conn-label').value = ed.label || '';
+}
+
+function fcClosePanel() {
+  const p = document.getElementById('fc-editor-panel');
+  if (p) p.style.display = 'none';
+}
+
+function fcUpdateText() {
+  if (!FC.sel) return;
+  const n = FC.nodes.find(x => x.id === FC.sel);
+  if (n) { n.text = document.getElementById('fc-sel-text').value; fcRender(); }
+}
+
+function fcUpdateType() {
+  if (!FC.sel) return;
+  const n = FC.nodes.find(x => x.id === FC.sel);
+  if (n) {
+    n.type = document.getElementById('fc-sel-type').value;
+    n.w = n.type==='decision' ? DW : NW;
+    n.h = n.type==='decision' ? DH : NH;
+    fcRender(); fcSaveHist();
   }
-  html += '</div>';
-  el.innerHTML = html;
 }
 
-function nodeHTML(n, editable, width) {
-  const cls = n.type === 'start' ? 'start'
-    : n.type === 'end' ? 'end'
-    : n.type === 'decision' ? 'decision'
-    : n.type === 'exception' ? 'exception'
-    : 'action';
-  const w = width ? `width:${width};` : '';
-  const cursor = editable ? 'cursor:pointer;' : 'cursor:default;';
-  const onclick = editable ? `onclick="flowEditOpen(${n.id})"` : '';
-  const title = editable ? 'title="Clique para editar"' : '';
-  const editIcon = editable ? `<span style="opacity:0.4;font-size:10px;margin-left:4px;">✎</span>` : '';
-  return `<div class="flow-node-box ${cls}" style="font-size:11px;${w}${cursor}position:relative;" ${onclick} ${title}>${n.text}${editIcon}</div>`;
+function fcUpdateConnLabel() {
+  if (!FC.selEdge) return;
+  const ed = FC.edges.find(x => x.id === FC.selEdge);
+  if (ed) { ed.label = document.getElementById('fc-conn-label').value; fcRender(); }
 }
 
-// ── EDITOR FUNCTIONS ──
-function flowEditOpen(id) {
-  const node = flowNodes.find(n => n.id === id);
-  if (!node) return;
-  flowEditingId = id;
-  document.getElementById('flow-edit-text').value = node.text;
-  document.getElementById('flow-edit-type').value = node.type;
-  const modal = document.getElementById('flow-edit-modal');
-  modal.style.display = 'flex';
-  document.getElementById('flow-edit-text').focus();
+function fcDelete() {
+  if (FC.sel) {
+    FC.nodes = FC.nodes.filter(n => n.id !== FC.sel);
+    FC.edges = FC.edges.filter(e => e.from !== FC.sel && e.to !== FC.sel);
+    FC.sel = null; fcClosePanel(); fcRender(); fcSaveHist();
+  }
+  if (FC.selEdge) {
+    FC.edges = FC.edges.filter(e => e.id !== FC.selEdge);
+    FC.selEdge = null; fcClosePanel(); fcRender(); fcSaveHist();
+  }
 }
 
-function flowEditClose() {
-  document.getElementById('flow-edit-modal').style.display = 'none';
-  flowEditingId = null;
+function fcDuplicate() {
+  if (!FC.sel) return;
+  const n = FC.nodes.find(x => x.id === FC.sel);
+  if (n) {
+    const nn = {id:'n'+(++FC.nc), type:n.type, text:n.text, x:n.x+30, y:n.y+30, w:n.w, h:n.h};
+    FC.nodes.push(nn); fcRender(); fcSaveHist();
+  }
 }
 
-function flowEditSave() {
-  if (flowEditingId === null) return;
-  const idx = flowNodes.findIndex(n => n.id === flowEditingId);
-  if (idx === -1) return;
-  flowNodes[idx].text = document.getElementById('flow-edit-text').value.trim() || flowNodes[idx].text;
-  flowNodes[idx].type = document.getElementById('flow-edit-type').value;
-  flowEditClose();
-  renderFlowCanvas();
+// ── TOOLBAR ACTIONS ──
+function flowAddTyped(type) {
+  const wrap = document.getElementById('flow-canvas-wrap');
+  const cx = (wrap.clientWidth/2 - FC.tx) / FC.scale;
+  const cy = (wrap.clientHeight/2 - FC.ty) / FC.scale;
+  const cfg = FC_CFG[type] || FC_CFG.action;
+  const n = {id:'n'+(++FC.nc), type, text:cfg.label, x:cx-NW/2, y:cy-NH/2,
+    w:type==='decision'?DW:NW, h:type==='decision'?DH:NH};
+  FC.nodes.push(n); fcRender(); fcOpenPanel(n.id); fcSaveHist();
 }
 
-function flowEditDelete() {
-  if (flowEditingId === null) return;
-  if (!confirm('Excluir esta etapa do fluxograma?')) return;
-  flowNodes = flowNodes.filter(n => n.id !== flowEditingId);
-  flowEditClose();
-  renderFlowCanvas();
+function toggleFlowConnect() {
+  FC.connecting = !FC.connecting;
+  const btn = document.getElementById('btn-flow-connect');
+  if (btn) {
+    btn.style.borderColor = FC.connecting ? 'var(--cyan)' : '';
+    btn.style.color = FC.connecting ? 'var(--cyan)' : '';
+  }
+  document.getElementById('flow-svg').style.cursor = FC.connecting ? 'crosshair' : 'default';
+  fcRender();
 }
 
-function flowEditMoveUp() {
-  const idx = flowNodes.findIndex(n => n.id === flowEditingId);
-  if (idx <= 0) return;
-  [flowNodes[idx-1], flowNodes[idx]] = [flowNodes[idx], flowNodes[idx-1]];
-  renderFlowCanvas();
+function flowUndo() {
+  if (FC.histIdx <= 0) return;
+  FC.histIdx--;
+  const s = JSON.parse(FC.hist[FC.histIdx]);
+  FC.nodes = s.nodes; FC.edges = s.edges; fcRender();
 }
 
-function flowEditMoveDown() {
-  const idx = flowNodes.findIndex(n => n.id === flowEditingId);
-  if (idx === -1 || idx >= flowNodes.length - 1) return;
-  [flowNodes[idx], flowNodes[idx+1]] = [flowNodes[idx+1], flowNodes[idx]];
-  renderFlowCanvas();
+function fcZoom(factor, cx, cy) {
+  const wrap = document.getElementById('flow-canvas-wrap');
+  cx = cx || wrap.clientWidth/2; cy = cy || wrap.clientHeight/2;
+  FC.tx = cx - (cx - FC.tx) * factor;
+  FC.ty = cy - (cy - FC.ty) * factor;
+  FC.scale = Math.max(0.2, Math.min(3, FC.scale * factor));
+  fcApplyTransform();
 }
 
-function flowAddNode() {
-  const newId = Date.now();
-  flowNodes.push({ id: newId, text: 'Nova etapa', type: 'action' });
-  renderFlowCanvas();
-  setTimeout(() => flowEditOpen(newId), 50);
+function fcApplyTransform() {
+  const root = document.getElementById('fc-root');
+  if (root) root.setAttribute('transform', `translate(${FC.tx},${FC.ty}) scale(${FC.scale})`);
 }
 
+function flowFitView() {
+  if (!FC.nodes.length) return;
+  const wrap = document.getElementById('flow-canvas-wrap');
+  const pad = 40;
+  const minX = Math.min(...FC.nodes.map(n=>n.x))-pad;
+  const minY = Math.min(...FC.nodes.map(n=>n.y))-pad;
+  const maxX = Math.max(...FC.nodes.map(n=>n.x+n.w))+pad;
+  const maxY = Math.max(...FC.nodes.map(n=>n.y+n.h))+pad;
+  const sx = wrap.clientWidth/(maxX-minX);
+  const sy = wrap.clientHeight/(maxY-minY);
+  FC.scale = Math.min(sx, sy, 1.2);
+  FC.tx = -minX*FC.scale + (wrap.clientWidth-(maxX-minX)*FC.scale)/2;
+  FC.ty = -minY*FC.scale + (wrap.clientHeight-(maxY-minY)*FC.scale)/2;
+  fcApplyTransform();
+}
+
+function fcAutoLayout() {
+  flowAutoLayout();
+}
+
+function flowAutoLayout() {
+  if (!FC.nodes.length) return;
+  const adj = {}, indeg = {};
+  FC.nodes.forEach(n => { adj[n.id]=[]; indeg[n.id]=0; });
+  FC.edges.forEach(e => { if(adj[e.from]){adj[e.from].push(e.to);indeg[e.to]=(indeg[e.to]||0)+1;} });
+  const levels = {};
+  let q = FC.nodes.filter(n=>!indeg[n.id]).map(n=>n.id);
+  q.forEach(id => levels[id]=0);
+  while(q.length){
+    const cur=q.shift();
+    (adj[cur]||[]).forEach(nxt=>{
+      levels[nxt]=Math.max(levels[nxt]||0,(levels[cur]||0)+1);
+      indeg[nxt]--;
+      if(indeg[nxt]===0) q.push(nxt);
+    });
+  }
+  const byLv = {};
+  FC.nodes.forEach(n => { const lv=levels[n.id]||0; if(!byLv[lv])byLv[lv]=[]; byLv[lv].push(n.id); });
+  const xGap=220, yGap=110;
+  Object.entries(byLv).forEach(([lv,ids])=>{
+    const total=ids.length*xGap;
+    ids.forEach((id,i)=>{
+      const n=FC.nodes.find(x=>x.id===id);
+      if(n){n.x=i*xGap-total/2+xGap/2+300; n.y=parseInt(lv)*yGap+60;}
+    });
+  });
+  fcRender();
+  setTimeout(flowFitView, 50);
+}
+
+function fcSaveHist() {
+  const s = JSON.stringify({nodes:FC.nodes, edges:FC.edges});
+  FC.hist = FC.hist.slice(0, FC.histIdx+1);
+  FC.hist.push(s); FC.histIdx=FC.hist.length-1;
+}
+
+// ── SAVE / UPDATE ──
 function flowSalvar() {
   if (!currentRecord) return;
-  currentRecord.etapas = flowNodes.map(n => n.text);
+  currentRecord.etapas = FC.nodes
+    .filter(n => n.type !== 'start' && n.type !== 'end')
+    .map(n => n.text);
   const idx = history.findIndex(r => r.id === currentRecord.id);
   if (idx !== -1) {
     history[idx].etapas = currentRecord.etapas;
@@ -1247,62 +1636,33 @@ function flowSalvar() {
   renderAuditLog(currentRecord);
 }
 
+
 // ── DRAW.IO EXPORT ──
 function abrirDrawio() {
-  if (!flowNodes.length) return;
+  if (!FC.nodes.length) return;
   let xml = '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>';
-  let id = 2; let y = 20;
-  const cx = 300, w = 200, h = 44, gap = 56;
-
-  const styleMap = {
-    start: 'ellipse;whiteSpace=wrap;fillColor=#00d4f0;strokeColor=#00a8c8;fontColor=#fff;fontStyle=1;',
-    end:   'ellipse;whiteSpace=wrap;fillColor=#444;strokeColor=#666;fontColor=#fff;fontStyle=1;',
-    decision: 'rhombus;whiteSpace=wrap;fillColor=#7c3fff;strokeColor=#5a2ecc;fontColor=#fff;fontStyle=1;',
-    exception: 'rounded=1;whiteSpace=wrap;fillColor=#ff5c6a;strokeColor=#cc3a46;fontColor=#fff;',
-    action: 'rounded=1;whiteSpace=wrap;fillColor=#18181f;strokeColor=#444;fontColor=#eee;'
+  let id = 2; const styleMap = {
+    start:'ellipse;whiteSpace=wrap;fillColor=#003322;strokeColor=#00c48c;fontColor=#00c48c;fontStyle=1;',
+    end:'ellipse;whiteSpace=wrap;fillColor=#220011;strokeColor=#ff5c6a;fontColor=#ff5c6a;fontStyle=1;',
+    decision:'rhombus;whiteSpace=wrap;fillColor=#2a1f00;strokeColor=#f5a623;fontColor=#f5a623;fontStyle=1;',
+    ramo:'rounded=1;whiteSpace=wrap;fillColor=#001a2a;strokeColor=#00d4f0;fontColor=#00d4f0;',
+    cenario:'rounded=1;whiteSpace=wrap;fillColor=#1a0028;strokeColor=#7c3fff;fontColor=#b09cff;',
+    exception:'rounded=1;whiteSpace=wrap;fillColor=#220011;strokeColor=#ff5c6a;fontColor=#ff8a94;',
+    action:'rounded=1;whiteSpace=wrap;fillColor=#18181f;strokeColor=#555;fontColor=#eeeef5;'
   };
-
-  const addNode = (text, type, x, yp, wd) => {
+  const nodeIds = {};
+  FC.nodes.forEach(n => {
     const nid = id++;
-    const safe = (text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    xml += `<mxCell id="${nid}" value="${safe}" style="${styleMap[type]||styleMap.action}" vertex="1" parent="1"><mxGeometry x="${x}" y="${yp}" width="${wd||w}" height="${h}" as="geometry"/></mxCell>`;
-    return nid;
-  };
-  const addEdge = (s, t, lbl) => {
-    xml += `<mxCell id="${id++}" value="${lbl||''}" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" source="${s}" target="${t}" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>`;
-  };
-
-  const temCenarios = flowNodes.some(n => /cenário|cenario/i.test(n.text));
-
-  if (!temCenarios) {
-    const sId = addNode('Início','start',cx,y,w); let prev = sId; y += h+gap;
-    flowNodes.forEach(n => {
-      const nId = addNode(n.text, n.type, cx, y, w);
-      addEdge(prev, nId, ''); prev = nId; y += h+gap;
-    });
-    const eId = addNode('Fim','end',cx,y,w); addEdge(prev,eId,'');
-  } else {
-    const cenarios=[]; let atual=null; const pre=[];
-    flowNodes.forEach(n => {
-      if(/cenário|cenario/i.test(n.text)){if(atual)cenarios.push(atual);atual={node:n,passos:[]};}
-      else if(atual){atual.passos.push(n);}else{pre.push(n);}
-    });
-    if(atual)cenarios.push(atual);
-    const sId=addNode('Início','start',cx,y,w);let prev=sId;y+=h+gap;
-    pre.forEach(n=>{const nId=addNode(n.text,n.type,cx,y,w);addEdge(prev,nId,'');prev=nId;y+=h+gap;});
-    const decId=addNode('Qual o cenário?','decision',cx,y,w);addEdge(prev,decId,'');y+=h+gap;
-    const totalW=cenarios.length*(w+40);
-    let sx=cx-totalW/2+20;
-    cenarios.forEach(c=>{
-      let cy=y;
-      const hId=addNode(c.node.text,'decision',sx,cy,w);addEdge(decId,hId,c.node.text.substring(0,15));cy+=h+gap;let cprev=hId;
-      c.passos.forEach(p=>{const pId=addNode(p.text,p.type,sx,cy,w);addEdge(cprev,pId,'');cprev=pId;cy+=h+gap;});
-      const eId=addNode('Fim','end',sx,cy,w);addEdge(cprev,eId,'');sx+=w+40;
-    });
-  }
-
+    nodeIds[n.id] = nid;
+    const safe = (n.text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const style = styleMap[n.type]||styleMap.action;
+    xml += `<mxCell id="${nid}" value="${safe}" style="${style}" vertex="1" parent="1"><mxGeometry x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" as="geometry"/></mxCell>`;
+  });
+  FC.edges.forEach(e => {
+    const safe = (e.label||'').replace(/&/g,'&amp;');
+    xml += `<mxCell id="${id++}" value="${safe}" style="edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" source="${nodeIds[e.from]}" target="${nodeIds[e.to]}" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>`;
+  });
   xml += '</root></mxGraphModel>';
-  const b64 = btoa(unescape(encodeURIComponent(xml)));
   window.open(`https://app.diagrams.net/?splash=0#R${encodeURIComponent(xml)}`, '_blank');
 }
 
